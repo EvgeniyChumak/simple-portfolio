@@ -1,0 +1,532 @@
+---
+const sectionWidth = 1280;
+const sectionHeight = 720;
+const cycleX = sectionWidth * 3;
+const cycleY = sectionHeight * 3;
+
+const sections = [
+  {
+    eyebrow: 'Webflow developer · Europe',
+    title: ['Yevhen', 'Chumak'],
+    text: 'I build expressive websites, custom functionality and technical systems.',
+    color: '#d9ff43',
+    x: 0,
+    y: 0,
+    action: 'Scroll to enter ↓',
+  },
+  {
+    eyebrow: '01 · Selected project',
+    title: ['GOTARIS'],
+    text: 'Subscription crypto analysis with authentication, payments, dashboards and a scalable archive.',
+    color: '#8ea8ff',
+    x: sectionWidth,
+    y: 0,
+    href: 'https://www.gotaris.de/',
+  },
+  {
+    eyebrow: '02 · Selected project',
+    title: ['reLounge'],
+    text: 'A multilingual medical platform with structured CMS content and custom proximity search.',
+    color: '#ffb64d',
+    x: sectionWidth,
+    y: sectionHeight,
+    href: 'https://www.reloungeclub.com/en',
+  },
+  {
+    eyebrow: '03 · Selected project',
+    title: ['Marketer UX'],
+    text: 'Long-term technical ownership across redesign, motion, forms, SEO and performance.',
+    color: '#e69aff',
+    x: sectionWidth * 2,
+    y: sectionHeight,
+    href: 'https://www.marketer-ux.com/',
+  },
+  {
+    eyebrow: '04 · Services',
+    title: ['Build.', 'Connect. Refine.'],
+    text: 'Webflow · CMS architecture · JavaScript · integrations · performance · technical SEO.',
+    color: '#77dfc1',
+    x: sectionWidth * 2,
+    y: sectionHeight * 2,
+  },
+  {
+    eyebrow: '05 · Contact',
+    title: ['Let’s make', 'it work.'],
+    text: 'Available for selected freelance projects and long-term collaborations.',
+    color: '#f2eee4',
+    x: sectionWidth * 3,
+    y: sectionHeight * 2,
+    href: 'mailto:gekachumak@gmail.com',
+    linkLabel: 'Email me ↗',
+  },
+];
+
+const groupSlots = [-1, 0, 1, 2];
+const isDev = import.meta.env.DEV;
+const paletteNames = [
+  '01 — Signal',
+  '02 — Monochrome',
+  '03 — Bauhaus',
+  '04 — Cyber Night',
+  '05 — Earth',
+  '06 — Deep Ocean',
+  '07 — Hot Sunset',
+  '08 — Editorial',
+  '09 — Toxic',
+  '10 — Candy Pop',
+  '11 — Safety',
+  '12 — Deep Forest',
+  '13 — Desert',
+  '14 — Ice',
+  '15 — RGB',
+];
+---
+
+<div
+  class="experience"
+  data-experience
+  data-count={sections.length}
+  data-cycle-x={cycleX}
+  data-cycle-y={cycleY}
+  tabindex="0"
+>
+  <div class="viewport">
+    <div class="camera" data-camera>
+      {groupSlots.map((slot) => (
+        <div class="cycle" data-cycle data-slot={slot}>
+          {sections.map((section, index) => (
+            <section
+              class="screen"
+              data-screen={index}
+              style={`left:${section.x}px;top:${section.y}px;--color:${section.color}`}
+            >
+              <p class="eyebrow">{section.eyebrow}</p>
+              <div class="screen__main">
+                <h2>{section.title.map((line) => <span>{line}</span>)}</h2>
+                <p>{section.text}</p>
+              </div>
+              <footer>
+                <span>{String(index + 1).padStart(2, '0')} / {String(sections.length).padStart(2, '0')}</span>
+                {section.action && <span>{section.action}</span>}
+                {section.href && (
+                  <a href={section.href} target={section.href.startsWith('mailto:') ? undefined : '_blank'} rel="noreferrer">
+                    {section.linkLabel ?? 'View project ↗'}
+                  </a>
+                )}
+              </footer>
+            </section>
+          ))}
+        </div>
+      ))}
+    </div>
+    <div class="scroll-cue" aria-hidden="true">
+      <svg viewBox="0 0 40 56" role="img">
+        <rect x="1" y="1" width="38" height="54" rx="19"></rect>
+        <path d="M20 13v22m-7-7 7 7 7-7"></path>
+      </svg>
+    </div>
+  </div>
+  {isDev && (
+    <label class="dev-palette" data-dev-palette>
+      <span>Palette</span>
+      <select aria-label="Development color palette">
+        {paletteNames.map((name, index) => <option value={index}>{name}</option>)}
+      </select>
+    </label>
+  )}
+</div>
+
+<script>
+  import { gsap } from 'gsap';
+
+  const root = document.querySelector<HTMLElement>('[data-experience]');
+  const camera = root?.querySelector<HTMLElement>('[data-camera]');
+
+  if (root && camera) {
+    const count = Number(root.dataset.count ?? 6);
+    const cycleX = Number(root.dataset.cycleX ?? 3840);
+    const cycleY = Number(root.dataset.cycleY ?? 2160);
+    const cycles = [...root.querySelectorAll<HTMLElement>('[data-cycle]')];
+    const screens = [...root.querySelectorAll<HTMLElement>('[data-screen]')];
+    const paletteControl = root.querySelector<HTMLElement>('[data-dev-palette]');
+    const paletteSelect = paletteControl?.querySelector<HTMLSelectElement>('select');
+    const palettes = [
+      ['#d9ff43', '#8ea8ff', '#ffb64d', '#e69aff', '#77dfc1', '#f2eee4'],
+      ['#f7f7f5', '#111111', '#d5d5d2', '#3b3b3b', '#969696', '#ffffff'],
+      ['#f5ead7', '#e53b2c', '#2455d6', '#f2c62f', '#161616', '#4ca66b'],
+      ['#090b13', '#00f5ff', '#ff2bd6', '#7dff00', '#6c37ff', '#ffef3b'],
+      ['#e8d6b0', '#8d4f38', '#ba7a52', '#5c6b4f', '#c1a477', '#f1e8d2'],
+      ['#d9f6f5', '#082f49', '#0b6e8e', '#2ba9b4', '#86d7cf', '#effcf8'],
+      ['#fff0cf', '#ff3d2e', '#ff7a00', '#f40076', '#6d1cff', '#ffd21f'],
+      ['#f5f0e6', '#171717', '#d62828', '#ffffff', '#b8b0a3', '#efdfc4'],
+      ['#d8ff00', '#16120f', '#6528f7', '#ff3e00', '#c6ff36', '#f4f0df'],
+      ['#ffb4dc', '#7ddcff', '#ffe45b', '#9d7bff', '#ff795b', '#71e6a6'],
+      ['#ffd400', '#1d1d1b', '#ff5a00', '#b8b8b1', '#f5f1e8', '#73806f'],
+      ['#dce8c8', '#0d3b2e', '#1f6a4f', '#789f62', '#b6c99d', '#263f32'],
+      ['#f1dfbd', '#c96d45', '#8b4f38', '#e6ad65', '#5b6670', '#fff3d8'],
+      ['#f3fbff', '#d6ecff', '#9dcdf4', '#5d99c6', '#d9f7ff', '#eef0ff'],
+      ['#ff2a2a', '#21e65f', '#2368ff', '#fff200', '#ff27bf', '#00e5ff'],
+    ];
+    let activePalette = palettes[0];
+    const points = [
+      [640, 360],
+      [1920, 360],
+      [1920, 1080],
+      [3200, 1080],
+      [3200, 1800],
+      [4480, 1800],
+    ];
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let introTarget = 0;
+    let intro = 0;
+    let positionTarget = 0;
+    let position = 0;
+    let lastCycle = Number.NaN;
+    let touchY = 0;
+    let ready = false;
+    let flickerTimer: number | undefined;
+    let preloaderTimeline: gsap.core.Timeline | null = null;
+
+    const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+    const smooth = (value: number) => value * value * (3 - 2 * value);
+    const modulo = (value: number, divisor: number) => ((value % divisor) + divisor) % divisor;
+    const mix = (from: number, to: number, amount: number) => from + (to - from) * amount;
+
+    const inkFor = (hex: string) => {
+      const value = hex.replace('#', '');
+      const red = Number.parseInt(value.slice(0, 2), 16);
+      const green = Number.parseInt(value.slice(2, 4), 16);
+      const blue = Number.parseInt(value.slice(4, 6), 16);
+      const luminance = (red * .299 + green * .587 + blue * .114) / 255;
+      return luminance > .56 ? '#111111' : '#f7f4ec';
+    };
+
+    const applyPalette = (index: number) => {
+      const safeIndex = clamp(Math.round(index), 0, palettes.length - 1);
+      activePalette = palettes[safeIndex] ?? palettes[0];
+      screens.forEach((screen) => {
+        const screenIndex = Number(screen.dataset.screen ?? 0);
+        const color = activePalette[screenIndex % activePalette.length] ?? activePalette[0];
+        screen.style.setProperty('--color', color);
+        screen.style.setProperty('--ink', inkFor(color));
+      });
+      if (paletteSelect) paletteSelect.value = String(safeIndex);
+      try { localStorage.setItem('portfolio-dev-palette', String(safeIndex)); } catch {}
+    };
+
+    if (paletteSelect) {
+      let savedPalette = 0;
+      try { savedPalette = Number(localStorage.getItem('portfolio-dev-palette') ?? 0); } catch {}
+      applyPalette(savedPalette);
+      paletteSelect.addEventListener('change', () => {
+        applyPalette(Number(paletteSelect.value));
+        startPreloader();
+      });
+      paletteControl?.addEventListener('wheel', (event) => event.stopPropagation());
+      paletteControl?.addEventListener('touchmove', (event) => event.stopPropagation());
+    }
+
+    const view = () => ({
+      overviewX: points[0][0],
+      overviewY: points[0][1],
+      overviewScale: Math.min(
+        (window.innerWidth / 2 - 24) / (cycleX + 640),
+        (window.innerHeight / 2 - 24) / (cycleY - 360),
+      ),
+      focusedScale: Math.min((window.innerWidth - 16) / 1280, (window.innerHeight - 16) / 720),
+    });
+
+    const pointAt = (value: number) => {
+      const cycle = Math.floor(value / count);
+      const local = modulo(value, count);
+      const index = Math.floor(local);
+      const amount = smooth(local - index);
+      const current = points[index] ?? points[0];
+      const next = index === count - 1 ? points[0] : points[index + 1];
+      const nextCycle = index === count - 1 ? cycle + 1 : cycle;
+
+      return {
+        cycle,
+        x: mix(current[0] + cycle * cycleX, next[0] + nextCycle * cycleX, amount),
+        y: mix(current[1] + cycle * cycleY, next[1] + nextCycle * cycleY, amount),
+      };
+    };
+
+    const layoutCycles = (centerCycle: number) => {
+      if (centerCycle === lastCycle) return;
+      lastCycle = centerCycle;
+      cycles.forEach((cycleElement) => {
+        const slot = Number(cycleElement.dataset.slot ?? 0);
+        const cycleIndex = centerCycle + slot;
+        gsap.set(cycleElement, { x: cycleIndex * cycleX, y: cycleIndex * cycleY });
+      });
+    };
+
+    const addMovement = (delta: number) => {
+      if (!ready) return;
+      if (introTarget < 1 && delta > 0) {
+        introTarget = clamp(introTarget + delta * .0017, 0, 1);
+        return;
+      }
+      if (introTarget > 0 && delta < 0 && positionTarget <= .001) {
+        introTarget = clamp(introTarget + delta * .0017, 0, 1);
+        return;
+      }
+      positionTarget = Math.max(0, positionTarget + delta * .00145);
+    };
+
+    root.addEventListener('wheel', (event) => {
+      event.preventDefault();
+      addMovement(event.deltaY);
+    }, { passive: false });
+
+    root.addEventListener('touchstart', (event) => {
+      touchY = event.touches[0]?.clientY ?? 0;
+    }, { passive: true });
+
+    root.addEventListener('touchmove', (event) => {
+      const nextY = event.touches[0]?.clientY ?? touchY;
+      const delta = touchY - nextY;
+      touchY = nextY;
+      event.preventDefault();
+      addMovement(delta * 2.2);
+    }, { passive: false });
+
+    root.addEventListener('keydown', (event) => {
+      if (['ArrowDown', 'ArrowRight', 'PageDown', ' '].includes(event.key)) {
+        event.preventDefault();
+        addMovement(220);
+      }
+      if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(event.key)) {
+        event.preventDefault();
+        addMovement(-220);
+      }
+    });
+
+    const startPreloader = () => {
+      preloaderTimeline?.kill();
+      if (flickerTimer !== undefined) window.clearInterval(flickerTimer);
+
+      introTarget = 0;
+      intro = 0;
+      positionTarget = 0;
+      position = 0;
+      lastCycle = Number.NaN;
+      ready = false;
+      root.classList.remove('is-ready', 'has-entered');
+
+      const { overviewX, overviewY, overviewScale } = view();
+      const baseX = window.innerWidth / 2 - overviewX * overviewScale;
+      const baseY = window.innerHeight / 2 - overviewY * overviewScale;
+      const nextCycleX = baseX - cycleX * overviewScale;
+      const nextCycleY = baseY - cycleY * overviewScale;
+      let colorStep = 0;
+
+      root.classList.add('is-loading');
+      layoutCycles(0);
+      gsap.set(camera, { x: baseX, y: baseY, scale: overviewScale, transformOrigin: '0 0' });
+
+      flickerTimer = window.setInterval(() => {
+        colorStep += 1;
+        screens.forEach((screen, index) => {
+          screen.style.setProperty('--flash-color', activePalette[(index + colorStep) % activePalette.length] ?? activePalette[0]);
+        });
+      }, reduced.matches ? 240 : 95);
+
+      preloaderTimeline = gsap.timeline({
+        onComplete: () => {
+          if (flickerTimer !== undefined) window.clearInterval(flickerTimer);
+          flickerTimer = undefined;
+          preloaderTimeline = null;
+          screens.forEach((screen) => screen.style.removeProperty('--flash-color'));
+          gsap.set(camera, { x: baseX, y: baseY, scale: overviewScale });
+          root.classList.remove('is-loading');
+          root.classList.add('is-ready');
+          ready = true;
+          root.focus({ preventScroll: true });
+        },
+      })
+        .to(camera, {
+          x: nextCycleX,
+          y: nextCycleY,
+          duration: reduced.matches ? .8 : 3.2,
+          ease: 'none',
+        });
+    };
+
+    if (document.readyState === 'complete') startPreloader();
+    else window.addEventListener('load', startPreloader, { once: true });
+
+    gsap.ticker.add(() => {
+      if (!ready) return;
+      const easing = reduced.matches ? 1 : .11;
+      intro += (introTarget - intro) * easing;
+      position += (positionTarget - position) * easing;
+
+      const route = pointAt(position);
+      layoutCycles(route.cycle);
+
+      const { overviewX, overviewY, overviewScale, focusedScale } = view();
+      const zoom = smooth(intro);
+      const x = mix(overviewX, route.x, zoom);
+      const y = mix(overviewY, route.y, zoom);
+      const scale = mix(overviewScale, focusedScale, zoom);
+
+      gsap.set(camera, {
+        x: window.innerWidth / 2 - x * scale,
+        y: window.innerHeight / 2 - y * scale,
+        scale,
+        transformOrigin: '0 0',
+      });
+      root.classList.toggle('has-entered', intro > .04 || position > .01);
+    });
+  }
+</script>
+
+<style define:vars={{ sectionWidth, sectionHeight }}>
+  .experience,
+  .viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: #0b0b0b;
+  }
+
+  .experience {
+    outline: none;
+    touch-action: none;
+  }
+
+  .camera,
+  .cycle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    will-change: transform;
+  }
+
+  .screen {
+    position: absolute;
+    display: flex;
+    width: calc(var(--sectionWidth) * 1px);
+    height: calc(var(--sectionHeight) * 1px);
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 56px 70px 48px;
+    color: var(--ink, #111);
+    background: var(--flash-color, var(--color));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 18%, transparent);
+    transition: background-color .08s linear;
+  }
+
+  .screen > * { transition: opacity .45s ease; }
+  .experience.is-loading .screen > * { opacity: 0; }
+
+  .scroll-cue {
+    position: fixed;
+    z-index: 10;
+    bottom: 1.5rem;
+    left: 50%;
+    width: 2.5rem;
+    height: 3.5rem;
+    opacity: 0;
+    color: #f4f1e8;
+    transform: translate(-50%, .75rem);
+    transition: opacity .4s ease, transform .4s ease;
+    pointer-events: none;
+  }
+
+  .experience.is-ready:not(.has-entered) .scroll-cue {
+    opacity: 1;
+    transform: translate(-50%, 0);
+    animation: cue-bob 1.25s ease-in-out infinite;
+  }
+
+  .dev-palette {
+    position: fixed;
+    z-index: 50;
+    bottom: 1rem;
+    left: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    padding: .55rem .65rem;
+    color: #f4f1e8;
+    background: rgba(11,11,11,.88);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: .45rem;
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .dev-palette select {
+    min-width: 9rem;
+    color: #111;
+    background: #f4f1e8;
+    border: 0;
+    border-radius: .25rem;
+    padding: .35rem .45rem;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .scroll-cue svg { display: block; width: 100%; height: 100%; }
+  .scroll-cue rect, .scroll-cue path { fill: none; stroke: currentColor; stroke-width: 1.5; }
+  .scroll-cue path { stroke-linecap: round; stroke-linejoin: round; }
+
+  @keyframes cue-bob {
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 .35rem; }
+  }
+
+  .eyebrow,
+  .screen footer {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 750;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
+
+  .screen__main {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(280px, .62fr);
+    align-items: end;
+    gap: 54px;
+  }
+
+  .screen h2 {
+    margin: 0;
+    font-size: 112px;
+    font-weight: 650;
+    line-height: .84;
+    letter-spacing: -.075em;
+  }
+
+  .screen h2 span { display: block; }
+  .screen__main > p { margin: 0; font-size: 20px; line-height: 1.45; }
+
+  .screen footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding-top: 20px;
+    border-top: 1px solid color-mix(in srgb, currentColor 32%, transparent);
+  }
+
+  .screen footer a { color: inherit; text-decoration: none; }
+
+  @media (max-width: 700px) {
+    .screen { padding: 70px 90px; }
+    .screen__main { grid-template-columns: 1fr; gap: 36px; }
+    .screen h2 { font-size: 100px; }
+    .screen__main > p { max-width: 700px; font-size: 26px; }
+    .eyebrow, .screen footer { font-size: 17px; }
+  }
+</style>
+
