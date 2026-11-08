@@ -1,0 +1,17 @@
+{
+  "name": "simple-portfolio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --background",
+    "stop": "astro dev stop",
+    "status": "astro dev status",
+    "logs": "astro dev logs",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "astro": "7.2.9",
+    "gsap": "3.15.0"
+  }
+}

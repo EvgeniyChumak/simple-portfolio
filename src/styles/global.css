@@ -1,0 +1,43 @@
+@font-face {
+  font-family: "Inter";
+  src: local("Arial");
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+  font-family: Inter, Arial, sans-serif;
+  color: #f4f1e8;
+  background: #0c0c0c;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #0c0c0c;
+  scroll-behavior: auto;
+}
+
+body {
+  min-width: 20rem;
+  margin: 0;
+  overflow-x: hidden;
+  background: #0c0c0c;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  color: #0c0c0c;
+  background: #d8ff3e;
+}
