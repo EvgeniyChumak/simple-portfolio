@@ -62,7 +62,6 @@ const sections = [
 ];
 
 const groupSlots = [-1, 0, 1, 2];
-const isDev = import.meta.env.DEV;
 const paletteNames = [
   '01 — Signal',
   '02 — Monochrome',
@@ -126,14 +125,12 @@ const paletteNames = [
       </svg>
     </div>
   </div>
-  {isDev && (
-    <label class="dev-palette" data-dev-palette>
-      <span>Palette</span>
-      <select aria-label="Development color palette">
-        {paletteNames.map((name, index) => <option value={index}>{name}</option>)}
-      </select>
-    </label>
-  )}
+  <label class="dev-palette" data-dev-palette>
+    <span>Palette</span>
+    <select aria-label="Color palette">
+      {paletteNames.map((name, index) => <option value={index}>{name}</option>)}
+    </select>
+  </label>
 </div>
 
 <script>
@@ -144,8 +141,8 @@ const paletteNames = [
 
   if (root && camera) {
     const count = Number(root.dataset.count ?? 6);
-    const cycleX = Number(root.dataset.cycleX ?? 3840);
-    const cycleY = Number(root.dataset.cycleY ?? 2160);
+    let cycleX = Number(root.dataset.cycleX ?? 3840);
+    let cycleY = Number(root.dataset.cycleY ?? 2160);
     const cycles = [...root.querySelectorAll<HTMLElement>('[data-cycle]')];
     const screens = [...root.querySelectorAll<HTMLElement>('[data-screen]')];
     const paletteControl = root.querySelector<HTMLElement>('[data-dev-palette]');
@@ -168,7 +165,9 @@ const paletteNames = [
       ['#ff2a2a', '#21e65f', '#2368ff', '#fff200', '#ff27bf', '#00e5ff'],
     ];
     let activePalette = palettes[0];
-    const points = [
+    let screenWidth = 1280;
+    let screenHeight = 720;
+    let points = [
       [640, 360],
       [1920, 360],
       [1920, 1080],
@@ -191,6 +190,44 @@ const paletteNames = [
     const smooth = (value: number) => value * value * (3 - 2 * value);
     const modulo = (value: number, divisor: number) => ((value % divisor) + divisor) % divisor;
     const mix = (from: number, to: number, amount: number) => from + (to - from) * amount;
+
+    const layoutGeometry = () => {
+      screenWidth = Math.max(320, window.innerWidth - 16);
+      screenHeight = Math.max(320, window.innerHeight - 16);
+      cycleX = screenWidth * 3;
+      cycleY = screenHeight * 3;
+      points = [
+        [screenWidth * .5, screenHeight * .5],
+        [screenWidth * 1.5, screenHeight * .5],
+        [screenWidth * 1.5, screenHeight * 1.5],
+        [screenWidth * 2.5, screenHeight * 1.5],
+        [screenWidth * 2.5, screenHeight * 2.5],
+        [screenWidth * 3.5, screenHeight * 2.5],
+      ];
+
+      const positions = [
+        [0, 0],
+        [screenWidth, 0],
+        [screenWidth, screenHeight],
+        [screenWidth * 2, screenHeight],
+        [screenWidth * 2, screenHeight * 2],
+        [screenWidth * 3, screenHeight * 2],
+      ];
+
+      screens.forEach((screen) => {
+        const index = Number(screen.dataset.screen ?? 0);
+        const position = positions[index] ?? positions[0];
+        gsap.set(screen, {
+          left: position[0],
+          top: position[1],
+          width: screenWidth,
+          height: screenHeight,
+        });
+      });
+
+      lastCycle = Number.NaN;
+      layoutCycles(Math.floor(position / count));
+    };
 
     const inkFor = (hex: string) => {
       const value = hex.replace('#', '');
@@ -230,10 +267,10 @@ const paletteNames = [
       overviewX: points[0][0],
       overviewY: points[0][1],
       overviewScale: Math.min(
-        (window.innerWidth / 2 - 24) / (cycleX + 640),
-        (window.innerHeight / 2 - 24) / (cycleY - 360),
+        (window.innerWidth / 2 - 24) / (cycleX + screenWidth * .5),
+        (window.innerHeight / 2 - 24) / (cycleY - screenHeight * .5),
       ),
-      focusedScale: Math.min((window.innerWidth - 16) / 1280, (window.innerHeight - 16) / 720),
+      focusedScale: 1,
     });
 
     const pointAt = (value: number) => {
@@ -261,6 +298,9 @@ const paletteNames = [
         gsap.set(cycleElement, { x: cycleIndex * cycleX, y: cycleIndex * cycleY });
       });
     };
+
+    layoutGeometry();
+    window.addEventListener('resize', layoutGeometry, { passive: true });
 
     const addMovement = (delta: number) => {
       if (!ready) return;
