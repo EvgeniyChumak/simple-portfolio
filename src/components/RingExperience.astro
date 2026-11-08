@@ -7,12 +7,11 @@ const cycleY = sectionHeight * 3;
 const sections = [
   {
     eyebrow: 'Webflow developer · Europe',
-    title: ['Yevhen', 'Chumak'],
-    text: 'I build expressive websites, custom functionality and technical systems.',
+    title: ['Hello, I`m Yevhen'],
+    text: 'I’m a developer with almost 4 years of experience and more than 50 completed projects, building large, complex websites across frontend development and Webflow, with API integrations, GSAP animations and performance optimization.',
     color: '#d9ff43',
     x: 0,
     y: 0,
-    action: 'Scroll to enter ↓',
   },
   {
     eyebrow: '01 · Selected project',
@@ -61,24 +60,8 @@ const sections = [
   },
 ];
 
+
 const groupSlots = [-1, 0, 1, 2];
-const paletteNames = [
-  '01 — Signal',
-  '02 — Monochrome',
-  '03 — Bauhaus',
-  '04 — Cyber Night',
-  '05 — Earth',
-  '06 — Deep Ocean',
-  '07 — Hot Sunset',
-  '08 — Editorial',
-  '09 — Toxic',
-  '10 — Candy Pop',
-  '11 — Safety',
-  '12 — Deep Forest',
-  '13 — Desert',
-  '14 — Ice',
-  '15 — RGB',
-];
 ---
 
 <div
@@ -99,20 +82,29 @@ const paletteNames = [
               data-screen={index}
               style={`left:${section.x}px;top:${section.y}px;--color:${section.color}`}
             >
-              <p class="eyebrow">{section.eyebrow}</p>
-              <div class="screen__main">
-                <h2>{section.title.map((line) => <span>{line}</span>)}</h2>
-                <p>{section.text}</p>
-              </div>
-              <footer>
-                <span>{String(index + 1).padStart(2, '0')} / {String(sections.length).padStart(2, '0')}</span>
-                {section.action && <span>{section.action}</span>}
-                {section.href && (
-                  <a href={section.href} target={section.href.startsWith('mailto:') ? undefined : '_blank'} rel="noreferrer">
-                    {section.linkLabel ?? 'View project ↗'}
-                  </a>
-                )}
-              </footer>
+              {index === 0 ? (
+                <>
+                  <canvas class="sky" data-sky aria-hidden="true"></canvas>
+                  <h2 class="hero__title">{section.title[0]}</h2>
+                  <p class="hero__box">{section.text}</p>
+                </>
+              ) : (
+                <>
+                  <p class="eyebrow">{section.eyebrow}</p>
+                  <div class="screen__main">
+                    <h2>{section.title.map((line) => <span>{line}</span>)}</h2>
+                    <p>{section.text}</p>
+                  </div>
+                  <footer>
+                    <span>{String(index + 1).padStart(2, '0')} / {String(sections.length).padStart(2, '0')}</span>
+                    {section.href && (
+                      <a href={section.href} target={section.href.startsWith('mailto:') ? undefined : '_blank'} rel="noreferrer">
+                        {section.linkLabel ?? 'View project ↗'}
+                      </a>
+                    )}
+                  </footer>
+                </>
+              )}
             </section>
           ))}
         </div>
@@ -125,16 +117,11 @@ const paletteNames = [
       </svg>
     </div>
   </div>
-  <label class="dev-palette" data-dev-palette>
-    <span>Palette</span>
-    <select aria-label="Color palette">
-      {paletteNames.map((name, index) => <option value={index}>{name}</option>)}
-    </select>
-  </label>
 </div>
 
 <script>
   import { gsap } from 'gsap';
+  import { skyFragment, skyScaleFar, skyScaleNear, skyVertex } from './skyShader';
 
   const root = document.querySelector<HTMLElement>('[data-experience]');
   const camera = root?.querySelector<HTMLElement>('[data-camera]');
@@ -145,26 +132,8 @@ const paletteNames = [
     let cycleY = Number(root.dataset.cycleY ?? 2160);
     const cycles = [...root.querySelectorAll<HTMLElement>('[data-cycle]')];
     const screens = [...root.querySelectorAll<HTMLElement>('[data-screen]')];
-    const paletteControl = root.querySelector<HTMLElement>('[data-dev-palette]');
-    const paletteSelect = paletteControl?.querySelector<HTMLSelectElement>('select');
-    const palettes = [
-      ['#d9ff43', '#8ea8ff', '#ffb64d', '#e69aff', '#77dfc1', '#f2eee4'],
-      ['#f7f7f5', '#111111', '#d5d5d2', '#3b3b3b', '#969696', '#ffffff'],
-      ['#f5ead7', '#e53b2c', '#2455d6', '#f2c62f', '#161616', '#4ca66b'],
-      ['#090b13', '#00f5ff', '#ff2bd6', '#7dff00', '#6c37ff', '#ffef3b'],
-      ['#e8d6b0', '#8d4f38', '#ba7a52', '#5c6b4f', '#c1a477', '#f1e8d2'],
-      ['#d9f6f5', '#082f49', '#0b6e8e', '#2ba9b4', '#86d7cf', '#effcf8'],
-      ['#fff0cf', '#ff3d2e', '#ff7a00', '#f40076', '#6d1cff', '#ffd21f'],
-      ['#f5f0e6', '#171717', '#d62828', '#ffffff', '#b8b0a3', '#efdfc4'],
-      ['#d8ff00', '#16120f', '#6528f7', '#ff3e00', '#c6ff36', '#f4f0df'],
-      ['#ffb4dc', '#7ddcff', '#ffe45b', '#9d7bff', '#ff795b', '#71e6a6'],
-      ['#ffd400', '#1d1d1b', '#ff5a00', '#b8b8b1', '#f5f1e8', '#73806f'],
-      ['#dce8c8', '#0d3b2e', '#1f6a4f', '#789f62', '#b6c99d', '#263f32'],
-      ['#f1dfbd', '#c96d45', '#8b4f38', '#e6ad65', '#5b6670', '#fff3d8'],
-      ['#f3fbff', '#d6ecff', '#9dcdf4', '#5d99c6', '#d9f7ff', '#eef0ff'],
-      ['#ff2a2a', '#21e65f', '#2368ff', '#fff200', '#ff27bf', '#00e5ff'],
-    ];
-    let activePalette = palettes[0];
+    // Ice palette
+    const activePalette = ['#f3fbff', '#d6ecff', '#9dcdf4', '#5d99c6', '#d9f7ff', '#eef0ff'];
     let screenWidth = 1280;
     let screenHeight = 720;
     let points = [
@@ -192,8 +161,9 @@ const paletteNames = [
     const mix = (from: number, to: number, amount: number) => from + (to - from) * amount;
 
     const layoutGeometry = () => {
-      screenWidth = Math.max(320, window.innerWidth - 16);
-      screenHeight = Math.max(320, window.innerHeight - 16);
+      const desktop = window.innerWidth > 700;
+      screenWidth = Math.max(320, desktop ? window.innerWidth * .95 : window.innerWidth - 16);
+      screenHeight = Math.max(320, window.innerHeight);
       cycleX = screenWidth * 3;
       cycleY = screenHeight * 3;
       points = [
@@ -238,30 +208,16 @@ const paletteNames = [
       return luminance > .56 ? '#111111' : '#f7f4ec';
     };
 
-    const applyPalette = (index: number) => {
-      const safeIndex = clamp(Math.round(index), 0, palettes.length - 1);
-      activePalette = palettes[safeIndex] ?? palettes[0];
+    const applyPalette = () => {
       screens.forEach((screen) => {
         const screenIndex = Number(screen.dataset.screen ?? 0);
         const color = activePalette[screenIndex % activePalette.length] ?? activePalette[0];
         screen.style.setProperty('--color', color);
         screen.style.setProperty('--ink', inkFor(color));
       });
-      if (paletteSelect) paletteSelect.value = String(safeIndex);
-      try { localStorage.setItem('portfolio-dev-palette', String(safeIndex)); } catch {}
     };
 
-    if (paletteSelect) {
-      let savedPalette = 0;
-      try { savedPalette = Number(localStorage.getItem('portfolio-dev-palette') ?? 0); } catch {}
-      applyPalette(savedPalette);
-      paletteSelect.addEventListener('change', () => {
-        applyPalette(Number(paletteSelect.value));
-        startPreloader();
-      });
-      paletteControl?.addEventListener('wheel', (event) => event.stopPropagation());
-      paletteControl?.addEventListener('touchmove', (event) => event.stopPropagation());
-    }
+    applyPalette();
 
     const view = () => ({
       overviewX: points[0][0],
@@ -272,6 +228,16 @@ const paletteNames = [
       ),
       focusedScale: 1,
     });
+
+    const setOverviewCamera = () => {
+      const { overviewX, overviewY, overviewScale } = view();
+      gsap.set(camera, {
+        x: window.innerWidth / 2 - overviewX * overviewScale,
+        y: window.innerHeight / 2 - overviewY * overviewScale,
+        scale: overviewScale,
+        transformOrigin: '0 0',
+      });
+    };
 
     const pointAt = (value: number) => {
       const cycle = Math.floor(value / count);
@@ -300,6 +266,10 @@ const paletteNames = [
     };
 
     layoutGeometry();
+    root.classList.add('is-loading');
+    setOverviewCamera();
+    // Reveal only after the camera sits in the overview, so the unscaled first paint is never visible.
+    requestAnimationFrame(() => root.classList.add('is-staged'));
     window.addEventListener('resize', layoutGeometry, { passive: true });
 
     const addMovement = (delta: number) => {
@@ -312,7 +282,7 @@ const paletteNames = [
         introTarget = clamp(introTarget + delta * .0017, 0, 1);
         return;
       }
-      positionTarget = Math.max(0, positionTarget + delta * .00145);
+      positionTarget = Math.max(0, positionTarget + delta * .00088);
     };
 
     root.addEventListener('wheel', (event) => {
@@ -397,6 +367,81 @@ const paletteNames = [
     if (document.readyState === 'complete') startPreloader();
     else window.addEventListener('load', startPreloader, { once: true });
 
+    // Hero sky: one shared WebGL cloud shader, copied only into the hero canvases that are on screen.
+    const skyWidth = 640;
+    const skyHeight = 360;
+    const skyCanvases = [...root.querySelectorAll<HTMLCanvasElement>('[data-sky]')];
+    const skyContexts = skyCanvases.map((canvas) => {
+      canvas.width = skyWidth;
+      canvas.height = skyHeight;
+      return canvas.getContext('2d');
+    });
+    const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
+    window.addEventListener('pointermove', (event) => {
+      pointer.tx = event.clientX / window.innerWidth - .5;
+      pointer.ty = .5 - event.clientY / window.innerHeight;
+    }, { passive: true });
+
+    const createSky = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = skyWidth;
+      canvas.height = skyHeight;
+      const gl = canvas.getContext('webgl', { antialias: false, depth: false, stencil: false });
+      if (!gl) return null;
+      const compile = (type: number, source: string) => {
+        const shader = gl.createShader(type)!;
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        return shader;
+      };
+      const program = gl.createProgram()!;
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, skyVertex));
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, skyFragment));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
+      gl.useProgram(program);
+      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      const position = gl.getAttribLocation(program, 'aPos');
+      gl.enableVertexAttribArray(position);
+      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.uniform2f(gl.getUniformLocation(program, 'uRes'), canvas.width, canvas.height);
+      const uTime = gl.getUniformLocation(program, 'uTime');
+      const uMouse = gl.getUniformLocation(program, 'uMouse');
+      const uScale = gl.getUniformLocation(program, 'uScale');
+      return (time: number, x: number, y: number, scale: number, targets: number[]) => {
+        gl.uniform1f(uTime, time);
+        gl.uniform2f(uMouse, x, y);
+        gl.uniform1f(uScale, scale);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        targets.forEach((index) => skyContexts[index]?.drawImage(canvas, 0, 0));
+      };
+    };
+    const drawSky = createSky();
+
+    // Canvas slots follow the cycle layout: [previous, current, next, +2]. The hero of the current
+    // cycle is on screen at the start of a lap, the next cycle's hero at the end of it.
+    const visibleSkies = () => {
+      if (!ready || (intro < .04 && position < .01)) return skyCanvases.map((_, index) => index);
+      const local = modulo(position, count);
+      const targets: number[] = [];
+      if (local < .75) targets.push(1);
+      if (local > count - .75) targets.push(2);
+      return targets;
+    };
+
+    gsap.ticker.add((time) => {
+      pointer.x += (pointer.tx - pointer.x) * .06;
+      pointer.y += (pointer.ty - pointer.y) * .06;
+      // Skip hidden tabs and frames where no hero is visible
+      if (!drawSky || document.hidden) return;
+      const targets = visibleSkies();
+      if (!targets.length) return;
+      // clouds zoom with the camera: far away from the start, a bit closer once inside the hero
+      drawSky(time + 20, pointer.x, pointer.y, mix(skyScaleFar, skyScaleNear, smooth(intro)), targets);
+    });
+
     gsap.ticker.add(() => {
       if (!ready) return;
       const easing = reduced.matches ? 1 : .11;
@@ -447,6 +492,14 @@ const paletteNames = [
     will-change: transform;
   }
 
+  .camera {
+    z-index: 1;
+    opacity: 0;
+    transition: opacity .9s ease;
+  }
+
+  .experience.is-staged .camera { opacity: 1; }
+
   .screen {
     position: absolute;
     display: flex;
@@ -461,8 +514,81 @@ const paletteNames = [
     transition: background-color .08s linear;
   }
 
+  .screen > .eyebrow,
+  .screen > .screen__main,
+  .screen > footer { position: relative; z-index: 1; }
+
   .screen > * { transition: opacity .45s ease; }
   .experience.is-loading .screen > * { opacity: 0; }
+
+  /* Hero: sizes come from the 1600px Figma frame, scaled with the screen width (1cqw = 16px in Figma) */
+  .screen[data-screen='0'] {
+    container-type: inline-size;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    background: linear-gradient(112deg, #b8dcf2 0%, #e8f3fa 48%, #faf2ed 100%);
+  }
+
+  .screen .hero__title {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    margin: 0;
+    padding: 0 3cqw;
+    letter-spacing: 0;
+    color: #000;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10cqw;
+    font-variation-settings: 'opsz' 14;
+    font-weight: 600;
+    line-height: normal;
+    text-align: center;
+    text-box: trim-both cap alphabetic;
+  }
+
+  .hero__box {
+    position: absolute;
+    z-index: 1;
+    bottom: 3cqw;
+    left: 50%;
+    width: 59.6cqw;
+    margin: 0;
+    padding: 2cqw;
+    color: rgba(0, 0, 0, .7);
+    background: rgba(255, 255, 255, .4);
+    border-radius: 1.5cqw;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(12px, 1.25cqw);
+    font-weight: 400;
+    line-height: normal;
+    text-align: center;
+    text-box: trim-both cap alphabetic;
+    transform: translateX(-50%);
+  }
+
+  @container (max-width: 700px) {
+    .screen .hero__title { font-size: 17cqw; }
+    .hero__box { width: calc(100% - 6cqw); padding: 20px; font-size: 14px; }
+  }
+
+  .experience.is-loading .screen[data-screen='0'] {
+    background: var(--flash-color, var(--color));
+  }
+
+  .sky {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    transition: opacity .6s ease;
+  }
+
+  .experience.is-loading .sky { opacity: 0; }
 
   .scroll-cue {
     position: fixed;
@@ -482,36 +608,6 @@ const paletteNames = [
     opacity: 1;
     transform: translate(-50%, 0);
     animation: cue-bob 1.25s ease-in-out infinite;
-  }
-
-  .dev-palette {
-    position: fixed;
-    z-index: 50;
-    bottom: 1rem;
-    left: 1rem;
-    display: flex;
-    align-items: center;
-    gap: .65rem;
-    padding: .55rem .65rem;
-    color: #f4f1e8;
-    background: rgba(11,11,11,.88);
-    border: 1px solid rgba(255,255,255,.2);
-    border-radius: .45rem;
-    font-size: .65rem;
-    font-weight: 700;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-  }
-
-  .dev-palette select {
-    min-width: 9rem;
-    color: #111;
-    background: #f4f1e8;
-    border: 0;
-    border-radius: .25rem;
-    padding: .35rem .45rem;
-    font: inherit;
-    cursor: pointer;
   }
 
   .scroll-cue svg { display: block; width: 100%; height: 100%; }
@@ -568,4 +664,5 @@ const paletteNames = [
     .screen__main > p { max-width: 700px; font-size: 26px; }
     .eyebrow, .screen footer { font-size: 17px; }
   }
+
 </style>
