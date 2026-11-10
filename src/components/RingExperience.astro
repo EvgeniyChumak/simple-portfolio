@@ -1,75 +1,106 @@
 ---
+import { cases } from '../data/cases';
+
 const sectionWidth = 1280;
 const sectionHeight = 720;
-const cycleX = sectionWidth * 3;
-const cycleY = sectionHeight * 3;
+
+// Ice palette by screen position (more screens than colors simply cycle through it)
+const iceColors = ['#f3fbff', '#d6ecff', '#9dcdf4', '#5d99c6', '#d9f7ff', '#eef0ff', '#bddcf6', '#e6f3ff'];
+
+const hero = {
+  title: 'Hello, I`m Yevhen',
+  text: 'I’m a developer with 4 years of commercial experience and more than 50 completed projects, building large, complex websites with Webflow, Astro, Next.js and React, plus API integrations, GSAP animations and performance optimization.',
+};
+
+// Contact screen: copy and links come from the old portfolio's Contact section
+const contact = {
+  lead: ['Let’s work', 'together.'],
+  intro: ['Have a project, collaboration,', 'or opportunity in mind?'],
+  outro: 'Feel free to get in touch.',
+  links: [
+    { label: 'Email', value: 'gekachumak@gmail.com', href: 'mailto:gekachumak@gmail.com', external: false },
+    { label: 'WhatsApp', value: '+380 68 230 61 43', href: 'https://wa.me/380682306143', external: true },
+    { label: 'LinkedIn', value: 'Yevhen Chumak', href: 'https://www.linkedin.com/in/yevhen-chumak-605516274/', external: true },
+    { label: 'Telegram', value: '@yevhen_chumak', href: 'https://t.me/yevhen_chumak', external: true },
+  ],
+  year: new Date().getFullYear(),
+};
+
+// Screens: the hero, the case studies, a closing contact screen. The route zigzags right, down, right, down...
+// and an EVEN number of screens makes it alternate across laps too (the lap offset is count/2 columns and rows).
+const total = cases.length + 2;
+if (total % 2) console.warn('RingExperience: use an even number of screens so the scroll keeps alternating horizontal/vertical');
+const grid = Array.from({ length: total }, (_, index) => [Math.ceil(index / 2), Math.floor(index / 2)]);
+const lap = total / 2;
+const cycleX = sectionWidth * lap;
+const cycleY = sectionHeight * lap;
+const place = (index: number) => ({ color: iceColors[index % iceColors.length], x: grid[index][0] * sectionWidth, y: grid[index][1] * sectionHeight });
 
 const sections = [
-  {
-    eyebrow: 'Webflow developer · Europe',
-    title: ['Hello, I`m Yevhen'],
-    text: 'I’m a developer with almost 4 years of experience and more than 50 completed projects, building large, complex websites across frontend development and Webflow, with API integrations, GSAP animations and performance optimization.',
-    color: '#d9ff43',
-    x: 0,
-    y: 0,
-  },
-  {
-    eyebrow: '01 · Selected project',
-    title: ['GOTARIS'],
-    text: 'Subscription crypto analysis with authentication, payments, dashboards and a scalable archive.',
-    color: '#8ea8ff',
-    x: sectionWidth,
-    y: 0,
-    href: 'https://www.gotaris.de/',
-  },
-  {
-    eyebrow: '02 · Selected project',
-    title: ['reLounge'],
-    text: 'A multilingual medical platform with structured CMS content and custom proximity search.',
-    color: '#ffb64d',
-    x: sectionWidth,
-    y: sectionHeight,
-    href: 'https://www.reloungeclub.com/en',
-  },
-  {
-    eyebrow: '03 · Selected project',
-    title: ['Marketer UX'],
-    text: 'Long-term technical ownership across redesign, motion, forms, SEO and performance.',
-    color: '#e69aff',
-    x: sectionWidth * 2,
-    y: sectionHeight,
-    href: 'https://www.marketer-ux.com/',
-  },
-  {
-    eyebrow: '04 · Services',
-    title: ['Build.', 'Connect. Refine.'],
-    text: 'Webflow · CMS architecture · JavaScript · integrations · performance · technical SEO.',
-    color: '#77dfc1',
-    x: sectionWidth * 2,
-    y: sectionHeight * 2,
-  },
-  {
-    eyebrow: '05 · Contact',
-    title: ['Let’s make', 'it work.'],
-    text: 'Available for selected freelance projects and long-term collaborations.',
-    color: '#f2eee4',
-    x: sectionWidth * 3,
-    y: sectionHeight * 2,
-    href: 'mailto:gekachumak@gmail.com',
-    linkLabel: 'Email me ↗',
-  },
+  { kind: 'hero' as const, ...hero, ...place(0) },
+  ...cases.map((project, index) => ({ kind: 'case' as const, ...project, ...place(index + 1) })),
+  { kind: 'contact' as const, ...contact, ...place(total - 1) },
 ];
 
+// Detail sections: every block becomes a short row (title, up to two paragraphs, a few chips); rows are grouped
+// into screens by length so each screen fits without scrolling.
+type Block = (typeof cases)[number]['blocks'][number];
+type Row = { title: string; texts: string[]; chips: string[] };
+
+const clip = (text: string, max: number) => {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; '));
+  return end > 80 ? cut.slice(0, end + 1) : `${cut.slice(0, cut.lastIndexOf(' '))}…`;
+};
+
+const toRow = (block: Block): Row => {
+  const paragraphs = block.paragraphs?.length ? block.paragraphs : block.lists?.[0] ? [block.lists[0].intro] : [];
+  return {
+    title: block.title,
+    texts: [clip(paragraphs[0] ?? '', 340), ...(paragraphs[1] ? [clip(paragraphs[1], 200)] : [])].filter(Boolean),
+    chips: [...(block.items ?? []), ...(block.lists ?? []).flatMap((list) => list.items)].slice(0, 10),
+  };
+};
+
+const weigh = (row: Row) => 150 + row.texts.reduce((sum, text) => sum + text.length, 0) + row.chips.reduce((sum, chip) => sum + chip.length + 8, 0) * .6;
+
+const chunkRows = (blocks: Block[]) => {
+  const groups: Row[][] = [[]];
+  let weight = 0;
+  let limit = 520;
+  for (const row of blocks.map(toRow)) {
+    const next = weigh(row);
+    if (weight + next > limit && groups[groups.length - 1].length) {
+      groups.push([]);
+      weight = 0;
+      limit = 900;
+    }
+    groups[groups.length - 1].push(row);
+    weight += next;
+  }
+  return groups;
+};
+
+type DetailPart = { kind: 'rows'; rows: Row[] } | { kind: 'diagram' };
+const detailParts = (project: (typeof cases)[number]): DetailPart[] => {
+  const parts: DetailPart[] = chunkRows(project.blocks).map((rows) => ({ kind: 'rows', rows }));
+  if (project.diagram) parts.splice(1, 0, { kind: 'diagram' });
+  return parts;
+};
 
 const groupSlots = [-1, 0, 1, 2];
 ---
 
 <div
-  class="experience"
+  class="experience is-loading"
   data-experience
   data-count={sections.length}
   data-cycle-x={cycleX}
   data-cycle-y={cycleY}
+  data-grid={JSON.stringify(grid)}
+  data-lap={lap}
+  data-colors={JSON.stringify(iceColors)}
   tabindex="0"
 >
   <div class="viewport">
@@ -78,31 +109,91 @@ const groupSlots = [-1, 0, 1, 2];
         <div class="cycle" data-cycle data-slot={slot}>
           {sections.map((section, index) => (
             <section
-              class="screen"
+              class={section.kind === 'contact' ? 'screen screen--contact' : 'screen'}
               data-screen={index}
+              data-case={section.kind === 'case' ? section.id : undefined}
               style={`left:${section.x}px;top:${section.y}px;--color:${section.color}`}
             >
-              {index === 0 ? (
+              {section.kind === 'hero' ? (
                 <>
                   <canvas class="sky" data-sky aria-hidden="true"></canvas>
-                  <h2 class="hero__title">{section.title[0]}</h2>
-                  <p class="hero__box">{section.text}</p>
+                  <h2 class="hero__title">{section.title}</h2>
+                  <div class="hero__box">
+                    <p class="hero__text">{section.text}</p>
+                    <div class="hero__actions">
+                      <button class="hero__button hero__button--light" type="button" data-go-works>Go to works</button>
+                      <button class="hero__button hero__button--dark" type="button" data-go-contact>Contact me</button>
+                    </div>
+                  </div>
+                </>
+              ) : section.kind === 'contact' ? (
+                <>
+                  <canvas class="sky sky--contact" data-sky-contact aria-hidden="true"></canvas>
+                  <header class="contact__top">
+                    <h2 class="contact__eyebrow">Contact</h2>
+                  </header>
+                  <p class="contact__title" aria-label={section.lead.join(' ')}>
+                    {section.lead.map((line) => <span aria-hidden="true">{line.split(' ').map((word) => <b>{word}</b>)}</span>)}
+                  </p>
+                  <div class="contact__side">
+                    <p class="contact__intro">{section.intro.map((line) => <span>{line}</span>)}<em>{section.outro}</em></p>
+                    <div class="contact__links">
+                      {section.links.map((link) => (
+                        <a class="contact__link" href={link.href} target={link.external ? '_blank' : undefined} rel={link.external ? 'noreferrer' : undefined}>
+                          <span class="contact__label">{link.label}</span>
+                          <span class="contact__value">{link.value}</span>
+                          <span class="contact__arrow"><svg viewBox="0 0 16 15" fill="none" aria-hidden="true"><path d="M0 6.92309H13.8418L9.096 2.0772L10.1243 1.5L16 7.5L10.1243 13.5L9.096 12.9228L13.8418 8.07693H0Z" fill="currentColor"></path></svg></span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                  <footer class="contact__foot">
+                    <p>© {section.year} Yevhen Chumak</p>
+                  </footer>
                 </>
               ) : (
                 <>
-                  <p class="eyebrow">{section.eyebrow}</p>
-                  <div class="screen__main">
-                    <h2>{section.title.map((line) => <span>{line}</span>)}</h2>
-                    <p>{section.text}</p>
+                  <h2 class="case__title">{section.title}</h2>
+                  <div class="case__gallery">
+                    <div class="case__slider" data-case-slider>
+                      <div class="case__stage">
+                        <img data-case-main src={section.images[0].main} alt={`${section.title} preview`} width="1100" height="733" decoding="async" />
+                        <button class="case__arrow case__arrow--prev" type="button" data-case-prev aria-label="Previous image">
+                          <svg viewBox="0 0 16 15" fill="none" aria-hidden="true"><path d="M0 6.92309H13.8418L9.096 2.0772L10.1243 1.5L16 7.5L10.1243 13.5L9.096 12.9228L13.8418 8.07693H0Z" fill="currentColor"></path></svg>
+                        </button>
+                        <button class="case__arrow case__arrow--next" type="button" data-case-next aria-label="Next image">
+                          <svg viewBox="0 0 16 15" fill="none" aria-hidden="true"><path d="M0 6.92309H13.8418L9.096 2.0772L10.1243 1.5L16 7.5L10.1243 13.5L9.096 12.9228L13.8418 8.07693H0Z" fill="currentColor"></path></svg>
+                        </button>
+                      </div>
+                      <div class="case__thumbs">
+                        {section.images.map((image, imageIndex) => (
+                          <button
+                            class={imageIndex === 0 ? 'case__thumb is-active' : 'case__thumb'}
+                            type="button"
+                            data-case-thumb
+                            data-main={image.main}
+                            aria-label={`Show image ${imageIndex + 1}`}
+                          >
+                            <img src={image.thumb} alt="" width="320" height="213" decoding="async" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <aside class="case__card">
+                      <div>
+                        <p class="case__name">{section.title}</p>
+                        <ul class="case__tags">{section.tags.filter((tag) => !/webflow/i.test(tag)).map((tag) => <li>{tag}</li>)}</ul>
+                      </div>
+                      <div>
+                        <p class="case__label">{section.about?.label ?? 'What I built'}</p>
+                        <p class="case__text">{section.about?.text ?? section.description}</p>
+                        <div class="case__actions">
+                          <button class="case__button case__button--light" type="button" data-case-more>More info</button>
+                          {section.liveUrl && <a class="case__button case__button--dark" href={section.liveUrl} target="_blank" rel="noreferrer">View project</a>}
+                        </div>
+                      </div>
+                    </aside>
                   </div>
-                  <footer>
-                    <span>{String(index + 1).padStart(2, '0')} / {String(sections.length).padStart(2, '0')}</span>
-                    {section.href && (
-                      <a href={section.href} target={section.href.startsWith('mailto:') ? undefined : '_blank'} rel="noreferrer">
-                        {section.linkLabel ?? 'View project ↗'}
-                      </a>
-                    )}
-                  </footer>
                 </>
               )}
             </section>
@@ -111,17 +202,100 @@ const groupSlots = [-1, 0, 1, 2];
       ))}
     </div>
     <div class="scroll-cue" aria-hidden="true">
-      <svg viewBox="0 0 40 56" role="img">
-        <rect x="1" y="1" width="38" height="54" rx="19"></rect>
-        <path d="M20 13v22m-7-7 7 7 7-7"></path>
+      <svg viewBox="0 0 36 72" fill="none">
+        <rect class="cue__body" x="3" y="2" width="30" height="48" rx="15" pathLength="1"></rect>
+        <line class="cue__wheel" x1="18" y1="12" x2="18" y2="20"></line>
+        <path class="cue__chevron cue__chevron--1" d="M12.5 57l5.5 4.5 5.5-4.5"></path>
+        <path class="cue__chevron cue__chevron--2" d="M12.5 63l5.5 4.5 5.5-4.5"></path>
       </svg>
     </div>
   </div>
+  {cases.map((project) => (
+    <template data-detail={project.id}>
+      {detailParts(project).map((part, groupIndex, groups) => (
+        <section class="screen detail-screen" data-num={String(groupIndex + 1).padStart(2, '0')}>
+          <div class="detail__head">
+            <h2 class="detail__title">{project.title}</h2>
+            <span class="detail__count">{String(groupIndex + 1).padStart(2, '0')} / {String(groups.length).padStart(2, '0')}</span>
+            {groupIndex === 0 && project.liveUrl && (
+              <a class="case__button case__button--dark" href={project.liveUrl} target="_blank" rel="noreferrer">View project</a>
+            )}
+            <button class="detail__close" type="button" data-detail-close>Close</button>
+          </div>
+          <div class="detail__body">
+            {groupIndex === 0 && (
+              <div class="detail__intro">
+                {project.subtitle && <p class="detail__lead">{project.subtitle}</p>}
+                {project.metrics.length > 0 && (
+                  <dl class="detail__metrics">
+                    {project.metrics.map((metric) => (
+                      <div><dt>{metric.value}</dt><dd>{metric.label}</dd></div>
+                    ))}
+                  </dl>
+                )}
+              </div>
+            )}
+            {part.kind === 'diagram' && project.diagram && (
+              <div class="detail__intro">
+                <p class="detail__lead">{project.diagram.title}</p>
+                <div class="detail__flow">
+                  {project.diagram.nodes.map((node) => (
+                    <div class={`detail__node detail__node--${node.kind ?? 'plain'}`} style={`grid-column:${node.col};grid-row:${node.row}`}>
+                      {node.kind === 'auto' && <span class="detail__badge">Auto</span>}
+                      {node.kind === 'human' && (
+                        <span class="detail__badge">
+                          <svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="4" r="2.2" /><path d="M1.8 11c.4-2.4 2.1-3.6 4.2-3.6s3.8 1.2 4.2 3.6" /></svg>
+                          Human
+                        </span>
+                      )}
+                      <h3>{node.name}</h3>
+                      <ul>{node.notes.map((note) => <li>{note}</li>)}</ul>
+                    </div>
+                  ))}
+                  {project.diagram.links.map((link) => (
+                    <div class={`detail__link detail__link--${link.dir}`} style={`grid-column:${link.col};grid-row:${link.row}`} aria-hidden="true">
+                      <span class="detail__label">{link.label}</span>
+                      <div class="detail__line">
+                        <i></i>
+                        {link.dir === 'up' ? (
+                          <svg viewBox="0 0 10 8" aria-hidden="true"><path d="M0 8L5 0L10 8Z" fill="currentColor"></path></svg>
+                        ) : link.dir === 'down' ? (
+                          <svg viewBox="0 0 10 8" aria-hidden="true"><path d="M0 0L5 8L10 0Z" fill="currentColor"></path></svg>
+                        ) : (
+                          <svg viewBox="0 0 8 10" aria-hidden="true"><path d="M0 0L8 5L0 10Z" fill="currentColor"></path></svg>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {part.kind === 'rows' && (
+              <div class="detail__rows">
+                {part.rows.map((row) => (
+                  <div class="detail__row">
+                    <h3>{row.title}</h3>
+                    <div>
+                      {row.texts.map((text) => <p>{text}</p>)}
+                      {row.chips.length > 0 && <ul class="detail__chips">{row.chips.map((chip) => <li>{chip}</li>)}</ul>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div class="detail__visual">
+            <img src={project.images[(groupIndex + 1) % project.images.length].main} alt="" width="1536" height="1024" decoding="async" />
+          </div>
+        </section>
+      ))}
+    </template>
+  ))}
 </div>
 
 <script>
   import { gsap } from 'gsap';
-  import { skyFragment, skyScaleFar, skyScaleNear, skyVertex } from './skyShader';
+  import { contactSky, heroSky, skyFragment, skyScaleFar, skyScaleNear, skyVertex, type SkyPalette } from './skyShader';
 
   const root = document.querySelector<HTMLElement>('[data-experience]');
   const camera = root?.querySelector<HTMLElement>('[data-camera]');
@@ -133,17 +307,12 @@ const groupSlots = [-1, 0, 1, 2];
     const cycles = [...root.querySelectorAll<HTMLElement>('[data-cycle]')];
     const screens = [...root.querySelectorAll<HTMLElement>('[data-screen]')];
     // Ice palette
-    const activePalette = ['#f3fbff', '#d6ecff', '#9dcdf4', '#5d99c6', '#d9f7ff', '#eef0ff'];
+    const activePalette: string[] = JSON.parse(root.dataset.colors ?? '[]');
+    const grid: number[][] = JSON.parse(root.dataset.grid ?? '[]');
+    const lap = Number(root.dataset.lap ?? 3);
     let screenWidth = 1280;
     let screenHeight = 720;
-    let points = [
-      [640, 360],
-      [1920, 360],
-      [1920, 1080],
-      [3200, 1080],
-      [3200, 1800],
-      [4480, 1800],
-    ];
+    let points: number[][] = [];
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
     let introTarget = 0;
     let intro = 0;
@@ -152,6 +321,7 @@ const groupSlots = [-1, 0, 1, 2];
     let lastCycle = Number.NaN;
     let touchY = 0;
     let ready = false;
+    let detailOpen = false;
     let flickerTimer: number | undefined;
     let preloaderTimeline: gsap.core.Timeline | null = null;
 
@@ -164,25 +334,10 @@ const groupSlots = [-1, 0, 1, 2];
       const desktop = window.innerWidth > 700;
       screenWidth = Math.max(320, desktop ? window.innerWidth * .95 : window.innerWidth - 16);
       screenHeight = Math.max(320, window.innerHeight);
-      cycleX = screenWidth * 3;
-      cycleY = screenHeight * 3;
-      points = [
-        [screenWidth * .5, screenHeight * .5],
-        [screenWidth * 1.5, screenHeight * .5],
-        [screenWidth * 1.5, screenHeight * 1.5],
-        [screenWidth * 2.5, screenHeight * 1.5],
-        [screenWidth * 2.5, screenHeight * 2.5],
-        [screenWidth * 3.5, screenHeight * 2.5],
-      ];
-
-      const positions = [
-        [0, 0],
-        [screenWidth, 0],
-        [screenWidth, screenHeight],
-        [screenWidth * 2, screenHeight],
-        [screenWidth * 2, screenHeight * 2],
-        [screenWidth * 3, screenHeight * 2],
-      ];
+      cycleX = screenWidth * lap;
+      cycleY = screenHeight * lap;
+      const positions = grid.map(([column, row]) => [column * screenWidth, row * screenHeight]);
+      points = positions.map(([x, y]) => [x + screenWidth / 2, y + screenHeight / 2]);
 
       screens.forEach((screen) => {
         const index = Number(screen.dataset.screen ?? 0);
@@ -190,8 +345,8 @@ const groupSlots = [-1, 0, 1, 2];
         gsap.set(screen, {
           left: position[0],
           top: position[1],
-          width: screenWidth,
-          height: screenHeight,
+          width: screenWidth + 1,
+          height: screenHeight + 1,
         });
       });
 
@@ -214,6 +369,7 @@ const groupSlots = [-1, 0, 1, 2];
         const color = activePalette[screenIndex % activePalette.length] ?? activePalette[0];
         screen.style.setProperty('--color', color);
         screen.style.setProperty('--ink', inkFor(color));
+        screen.dataset.tone = inkFor(color) === '#111111' ? 'light' : 'dark';
       });
     };
 
@@ -273,7 +429,25 @@ const groupSlots = [-1, 0, 1, 2];
     window.addEventListener('resize', layoutGeometry, { passive: true });
 
     const addMovement = (delta: number) => {
-      if (!ready) return;
+      if (!ready || flying) return;
+      if (detailOpen) {
+        // the open cases are part of the page: scrolling carries on along one endless path
+        if (detailFree) {
+          if (detailTarget <= .001) {
+            // same as the normal route: at the very first hero, scrolling up pulls back to the overview
+            if (introTarget < 1 && delta > 0) {
+              introTarget = clamp(introTarget + delta * .0017, 0, 1);
+              return;
+            }
+            if (delta < 0) {
+              introTarget = clamp(introTarget + delta * .0017, 0, 1);
+              return;
+            }
+          }
+          detailTarget = Math.max(0, detailTarget + delta * .0009);
+        }
+        return;
+      }
       if (introTarget < 1 && delta > 0) {
         introTarget = clamp(introTarget + delta * .0017, 0, 1);
         return;
@@ -331,6 +505,9 @@ const groupSlots = [-1, 0, 1, 2];
       const nextCycleX = baseX - cycleX * overviewScale;
       const nextCycleY = baseY - cycleY * overviewScale;
       let colorStep = 0;
+      screens.forEach((screen, index) => {
+        screen.style.setProperty('--flash-color', activePalette[index % activePalette.length] ?? activePalette[0]);
+      });
 
       root.classList.add('is-loading');
       layoutCycles(0);
@@ -364,18 +541,380 @@ const groupSlots = [-1, 0, 1, 2];
         });
     };
 
-    if (document.readyState === 'complete') startPreloader();
-    else window.addEventListener('load', startPreloader, { once: true });
+    // Start only once the page and fonts are ready, so nothing reflows during the zoom
+    const pageLoaded = document.readyState === 'complete'
+      ? Promise.resolve()
+      : new Promise<void>((resolve) => window.addEventListener('load', () => resolve(), { once: true }));
+    const fontsLoaded = Promise.race([
+      Promise.all([
+        document.fonts.load('600 100px "DM Sans"'),
+        document.fonts.load('500 100px "DM Sans"'),
+        document.fonts.load('400 16px Inter'),
+        document.fonts.load('300 16px Inter'),
+        document.fonts.load('500 12px Inter'),
+      ]),
+      new Promise((resolve) => window.setTimeout(resolve, 2500)),
+    ]);
+    // skyWarm (below) compiles both shaders and paints every canvas once; the preloader waits for it too
+    Promise.all([pageLoaded, fontsLoaded]).then(() => skyWarm).then(startPreloader);
 
-    // Hero sky: one shared WebGL cloud shader, copied only into the hero canvases that are on screen.
-    const skyWidth = 640;
-    const skyHeight = 360;
-    const skyCanvases = [...root.querySelectorAll<HTMLCanvasElement>('[data-sky]')];
-    const skyContexts = skyCanvases.map((canvas) => {
+
+    // Case slider: arrows and previews swap the big image (the next image is decoded before the swap)
+    // Slider: the next picture slides/fades in over the current one. When it lands it simply becomes the main
+    // picture (the old <img> is removed), so nothing is re-decoded and nothing flashes.
+    const slideTweens = new WeakMap<HTMLElement, gsap.core.Tween>();
+    const showSlide = (screen: HTMLElement, index: number, direction = 0) => {
+      const stage = screen.querySelector<HTMLElement>('.case__stage');
+      const thumbs = [...screen.querySelectorAll<HTMLElement>('[data-case-thumb]')];
+      if (!stage || !thumbs.length) return;
+
+      // finish a slide that is still running so quick clicks never stack up
+      slideTweens.get(stage)?.progress(1);
+      const main = stage.querySelector<HTMLImageElement>('[data-case-main]');
+      if (!main) return;
+
+      const next = (index + thumbs.length) % thumbs.length;
+      const current = Number(screen.dataset.slide ?? 0);
+      if (next === current) return;
+      const url = thumbs[next].dataset.main ?? main.src;
+      const dir = direction || Math.sign(next - current) || 1;
+      thumbs.forEach((thumb, i) => thumb.classList.toggle('is-active', i === next));
+      screen.dataset.slide = String(next);
+
+      const incoming = main.cloneNode() as HTMLImageElement;
+      incoming.removeAttribute('data-case-main');
+      incoming.src = url;
+      incoming.decode().catch(() => {}).then(() => {
+        if (screen.dataset.slide !== String(next) || !main.isConnected) return;
+        main.after(incoming);
+        const slow = reduced.matches ? 0 : 1;
+        gsap.set(incoming, { xPercent: dir * 7 * slow, opacity: 0 });
+        slideTweens.set(stage, gsap.to(incoming, {
+          xPercent: 0,
+          opacity: 1,
+          duration: .55 * slow,
+          ease: 'power3.out',
+          onUpdate() { gsap.set(main, { xPercent: -dir * 3 * slow * this.progress() }); },
+          onComplete: () => {
+            main.remove();
+            incoming.setAttribute('data-case-main', '');
+            gsap.set(incoming, { clearProps: 'transform,opacity' });
+            slideTweens.delete(stage);
+          },
+        }));
+      });
+    };
+
+    // Swipe (touch, pen or mouse drag) on the picture changes the slide; vertical moves still travel the scene
+    let swipe: { x: number; y: number; screen: HTMLElement } | null = null;
+    root.addEventListener('pointerdown', (event) => {
+      const target = event.target as HTMLElement;
+      const stage = target.closest<HTMLElement>('.case__stage');
+      const screen = stage?.closest<HTMLElement>('.screen');
+      swipe = stage && screen && !target.closest('.case__arrow') ? { x: event.clientX, y: event.clientY, screen } : null;
+    });
+    root.addEventListener('pointerup', (event) => {
+      if (!swipe) return;
+      const dx = event.clientX - swipe.x;
+      const dy = event.clientY - swipe.y;
+      const { screen } = swipe;
+      swipe = null;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        showSlide(screen, Number(screen.dataset.slide ?? 0) + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+      }
+    });
+    root.addEventListener('pointercancel', () => { swipe = null; });
+
+    root.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement;
+      const screen = target.closest<HTMLElement>('.screen');
+      if (!screen) return;
+      // "Go to works" / "Contact me": the first case or the contact screen of the clicked hero's own lap
+      const goWorks = target.closest('[data-go-works]');
+      if (goWorks || target.closest('[data-go-contact]')) {
+        if (!ready || detailBusy || flying) return;
+        // the closest copy of the wanted screen (first case / contact), whichever lap it is on
+        const index = goWorks ? 1 : count - 1;
+        const from = valueOf(screen);
+        let value = Math.round((from - index) / count) * count + index;
+        if (value < 0) value += count;
+        if (detailOpen) {
+          introTarget = 1;
+          detailTarget = seqOf(value);
+        } else flyTo(value);
+        return;
+      }
+      if (target.closest('[data-case-more]')) {
+        openDetail(screen);
+        return;
+      }
+      if (target.closest('[data-detail-close]')) {
+        const section = target.closest<HTMLElement>('.detail-screen');
+        closeDetail(runs.find((run) => section && run.sections.includes(section)));
+        return;
+      }
+      const current = Number(screen.dataset.slide ?? 0);
+      if (target.closest('[data-case-prev]')) showSlide(screen, current - 1, -1);
+      else if (target.closest('[data-case-next]')) showSlide(screen, current + 1, 1);
+      else {
+        const thumb = target.closest<HTMLElement>('[data-case-thumb]');
+        if (thumb) showSlide(screen, [...screen.querySelectorAll('[data-case-thumb]')].indexOf(thumb));
+      }
+    });
+
+    // "More info": the camera pulls back, everything that comes after the case slides down, the detail sections come
+    // out from under the case and the camera zooms into them. Any number of cases can be open at once. While at
+    // least one is open the scroll path is one endless sequence of "steps": every screen of the route plus the detail
+    // sections inserted after their case (see stopAt). Only transforms are animated.
+    type DetailRun = {
+      value: number; // route position of the case (lap * count + screen index)
+      n: number;
+      total: number;
+      sections: HTMLElement[];
+      left: number;
+      top: number;
+      cx: number;
+      cy: number;
+    };
+
+    const cam = { cx: 0, cy: 0, scale: 1 };
+    const runs: DetailRun[] = [];
+    let detailFree = false;
+    let detailBusy = false;
+    let detailPos = 0;
+    let detailTarget = 0;
+
+    const applyCamera = () => {
+      gsap.set(camera, {
+        x: window.innerWidth / 2 - cam.cx * cam.scale,
+        y: window.innerHeight / 2 - cam.cy * cam.scale,
+        scale: cam.scale,
+        transformOrigin: '0 0',
+      });
+    };
+
+    // how many detail slots lie before a screen of the route, and the matching shift down
+    const slotsBefore = (value: number) => runs.reduce((sum, run) => (run.value < value ? sum + run.n : sum), 0);
+    const shiftBefore = (value: number) => slotsBefore(value) * screenHeight;
+    const seqOf = (value: number) => value + slotsBefore(value);
+    const valueOf = (element: HTMLElement) =>
+      (lastCycle + cycles.indexOf(element.parentElement as HTMLElement) - 1) * count + Number(element.dataset.screen);
+
+    // what the camera looks at for step `seq`: a screen of the route, or one of the detail sections
+    const stopAt = (seq: number) => {
+      let offset = 0;
+      for (const run of runs) {
+        const caseSeq = run.value + offset;
+        if (seq <= caseSeq) break;
+        if (seq <= caseSeq + run.n) {
+          return { x: run.cx, y: run.cy + shiftBefore(run.value) + screenHeight * (seq - caseSeq), value: run.value };
+        }
+        offset += run.n;
+      }
+      const value = seq - offset;
+      const route = pointAt(value);
+      return { x: route.x, y: route.y + shiftBefore(value), value };
+    };
+
+    const placeSections = (run: DetailRun) => {
+      run.sections.forEach((section, index) => {
+        gsap.set(section, { left: run.left, top: run.top + shiftBefore(run.value) + screenHeight * (index + 1), y: 0 });
+      });
+    };
+
+    // make every loaded screen and section match the open cases (also after the laps were re-laid out)
+    const syncPush = () => {
+      screens.forEach((element) => {
+        const shift = shiftBefore(valueOf(element));
+        gsap.set(element, shift ? { y: shift } : { clearProps: 'transform' });
+      });
+      runs.forEach(placeSections);
+    };
+
+    const nearestRun = () => runs.reduce<DetailRun | null>((best, run) => {
+      const distance = Math.abs(seqOf(run.value) + run.n / 2 - detailPos);
+      return !best || distance < Math.abs(seqOf(best.value) + best.n / 2 - detailPos) ? run : best;
+    }, null);
+
+    // screens (and the sections of other open cases) that come after the case and so have to move
+    const collectMoving = (value: number, caseCy: number) => {
+      const near: HTMLElement[] = [];
+      const far: HTMLElement[] = [];
+      screens.forEach((element) => {
+        const other = valueOf(element);
+        if (other <= value) return;
+        const distance = (pointAt(other).y + shiftBefore(other) - caseCy) / screenHeight;
+        (distance <= 6 ? near : far).push(element);
+      });
+      const sections = runs.filter((run) => run.value > value).flatMap((run) => run.sections);
+      return { near, far, sections };
+    };
+
+    const openDetail = (screen: HTMLElement) => {
+      if (!ready || detailBusy) return;
+      const template = root.querySelector<HTMLTemplateElement>(`template[data-detail="${screen.dataset.case}"]`);
+      if (!template) return;
+      const value = valueOf(screen);
+      if (runs.some((run) => run.value === value)) return;
+      const sections = [...template.content.children].map((node) => node.cloneNode(true) as HTMLElement);
+      if (!sections.length) return;
+
+      const slow = reduced.matches ? .4 : 1;
+      const route = pointAt(value);
+      const run: DetailRun = {
+        value,
+        n: sections.length,
+        total: sections.length * screenHeight,
+        sections,
+        left: route.x - screenWidth / 2,
+        top: route.y - screenHeight / 2,
+        cx: route.x,
+        cy: route.y,
+      };
+      const caseShift = shiftBefore(value); // cases that are already open have moved this one
+      const caseCy = run.cy + caseShift;
+      const farScale = Math.min(.5, window.innerHeight / ((run.n + 1.8) * screenHeight), window.innerWidth / (screenWidth * 1.9));
+
+      // start from wherever the camera is now
+      const scaleNow = Number(gsap.getProperty(camera, 'scale'));
+      cam.scale = scaleNow;
+      cam.cx = (window.innerWidth / 2 - Number(gsap.getProperty(camera, 'x'))) / scaleNow;
+      cam.cy = (window.innerHeight / 2 - Number(gsap.getProperty(camera, 'y'))) / scaleNow;
+
+      detailOpen = true;
+      detailBusy = true;
+      detailFree = false;
+      root.classList.add('is-detail');
+
+      sections.forEach((section, index) => {
+        section.style.setProperty('--color', screen.style.getPropertyValue('--color'));
+        section.dataset.tone = screen.dataset.tone ?? 'light';
+        // each section waits exactly behind the case (y offset) and slides down to its own slot
+        gsap.set(section, {
+          left: run.left,
+          top: run.top + caseShift + screenHeight * (index + 1),
+          width: screenWidth + 1,
+          height: screenHeight + 1,
+          y: -screenHeight * (index + 1),
+          zIndex: -(index + 1),
+        });
+        camera.append(section);
+      });
+
+      // Only the screens that can be seen while zoomed out are animated; the far ones just jump. The moving ones get
+      // their own layer (will-change) while the camera is still at scale 1, so the browser rasters them once at full
+      // size instead of re-rastering every frame while the camera zooms.
+      const { near, far, sections: later } = collectMoving(value, caseCy);
+      gsap.set(far, { y: `+=${run.total}` });
+      const moving = [...sections, ...near, ...later];
+      moving.forEach((element) => { element.style.willChange = 'transform'; });
+
+      gsap.timeline({
+        onComplete: () => {
+          moving.forEach((element) => { element.style.willChange = ''; });
+          runs.push(run);
+          runs.sort((a, b) => a.value - b.value);
+          syncPush();
+          detailBusy = false;
+          detailFree = true;
+          detailPos = seqOf(value) + 1;
+          detailTarget = detailPos;
+          position = value;
+          positionTarget = value;
+          sections[0].querySelector<HTMLElement>('[data-detail-close]')?.focus({ preventScroll: true });
+        },
+      })
+        .to(cam, { cx: run.cx, cy: caseCy + run.total / 2, scale: farScale, duration: .95 * slow, ease: 'power3.inOut' }, 0)
+        // the sections come out from under the case and push everything after it down with the same move
+        .to(sections, { y: 0, duration: 1.1 * slow, ease: 'power3.inOut' }, .25 * slow)
+        .to([...near, ...later], { y: `+=${run.total}`, duration: 1.1 * slow, ease: 'power3.inOut' }, .25 * slow)
+        .to(cam, { cx: run.cx, cy: caseCy + screenHeight, scale: 1, duration: 1.05 * slow, ease: 'power3.inOut' }, 1.35 * slow);
+    };
+
+    const closeDetail = (target?: DetailRun | null) => {
+      const run = target ?? nearestRun();
+      if (!run || detailBusy) return;
+      const slow = reduced.matches ? .4 : 1;
+      const caseCy = run.cy + shiftBefore(run.value);
+      const farScale = Math.min(.5, window.innerHeight / ((run.n + 1.8) * screenHeight), window.innerWidth / (screenWidth * 1.9));
+      detailBusy = true;
+      detailFree = false;
+      intro = 1;
+      introTarget = 1;
+
+      // the user may have scrolled many laps away: bring the laps around this case back so it can be animated
+      const runLap = Math.floor(run.value / count);
+      if (Math.abs(Math.floor(position / count) - runLap) > 1) {
+        layoutCycles(runLap);
+        syncPush();
+        cam.cx = run.cx;
+        cam.cy = caseCy + run.total / 2;
+        cam.scale = farScale;
+      }
+
+      const { near, far, sections: later } = collectMoving(run.value, caseCy);
+      gsap.set(far, { y: `-=${run.total}` });
+      const moving = [...run.sections, ...near, ...later];
+      moving.forEach((element) => { element.style.willChange = 'transform'; });
+
+      gsap.timeline({
+        onComplete: () => {
+          moving.forEach((element) => { element.style.willChange = ''; });
+          run.sections.forEach((section) => section.remove());
+          runs.splice(runs.indexOf(run), 1);
+          syncPush();
+          detailBusy = false;
+          position = run.value;
+          positionTarget = run.value;
+          if (runs.length) {
+            detailFree = true;
+            detailPos = seqOf(run.value);
+            detailTarget = detailPos;
+          } else {
+            detailOpen = false;
+            detailFree = false;
+            root.classList.remove('is-detail');
+            root.focus({ preventScroll: true });
+          }
+        },
+      })
+        .to(cam, { cx: run.cx, cy: caseCy + run.total / 2, scale: farScale, duration: .95 * slow, ease: 'power3.inOut' }, 0)
+        // the sections slide back under the case and the rest of the page rises with them
+        .to(run.sections, { y: (index: number) => -screenHeight * (index + 1), duration: 1.1 * slow, ease: 'power3.inOut' }, .4 * slow)
+        .to([...near, ...later], { y: `-=${run.total}`, duration: 1.1 * slow, ease: 'power3.inOut' }, .4 * slow)
+        .to(cam, { cx: run.cx, cy: caseCy, scale: 1, duration: 1 * slow, ease: 'power3.inOut' }, 1.45 * slow);
+    };
+
+    // drop every open case at once (used when the window is resized: the sections are sized only once)
+    const resetDetails = () => {
+      runs.forEach((run) => run.sections.forEach((section) => section.remove()));
+      runs.length = 0;
+      syncPush();
+      position = Math.round(position);
+      positionTarget = position;
+      detailOpen = false;
+      detailBusy = false;
+      detailFree = false;
+      root.classList.remove('is-detail');
+    };
+
+    root.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeDetail();
+    });
+    window.addEventListener('resize', () => { if (detailOpen) resetDetails(); }, { passive: true });
+
+    // Hero sky: one WebGL shader paints the hero canvases. Kept cheap: a small canvas, 4 noise octaves, only
+    // while a hero is on screen, every frame only while something moves (mouse / scroll) and otherwise just the
+    // slow drift at ~15 fps. Until the first frame the canvas shows the static picture (CSS background).
+    const skyWidth = 448;
+    const skyHeight = 252;
+    const skyCanvases = (selector: string) => [...root.querySelectorAll<HTMLCanvasElement>(selector)].map((canvas) => {
       canvas.width = skyWidth;
       canvas.height = skyHeight;
       return canvas.getContext('2d');
     });
+    const skyContexts = skyCanvases('[data-sky]');
+    const contactContexts = skyCanvases('[data-sky-contact]');
     const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
     window.addEventListener('pointermove', (event) => {
       pointer.tx = event.clientX / window.innerWidth - .5;
@@ -410,40 +949,143 @@ const groupSlots = [-1, 0, 1, 2];
       const uTime = gl.getUniformLocation(program, 'uTime');
       const uMouse = gl.getUniformLocation(program, 'uMouse');
       const uScale = gl.getUniformLocation(program, 'uScale');
-      return (time: number, x: number, y: number, scale: number, targets: number[]) => {
+      const uShift = gl.getUniformLocation(program, 'uShift');
+      const uColors = ['uBaseA', 'uBaseB', 'uTintA', 'uTintB', 'uTintC'].map((name) => gl.getUniformLocation(program, name));
+      return (time: number, x: number, y: number, scale: number, shift: number, slots: number[], palette: SkyPalette = heroSky, targets = skyContexts) => {
+        uColors.forEach((location, index) => gl.uniform3fv(location, palette[index]));
         gl.uniform1f(uTime, time);
         gl.uniform2f(uMouse, x, y);
         gl.uniform1f(uScale, scale);
+        gl.uniform1f(uShift, shift);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
-        targets.forEach((index) => skyContexts[index]?.drawImage(canvas, 0, 0));
+        slots.forEach((slot) => targets[slot]?.drawImage(canvas, 0, 0));
       };
     };
-    const drawSky = createSky();
-
-    // Canvas slots follow the cycle layout: [previous, current, next, +2]. The hero of the current
-    // cycle is on screen at the start of a lap, the next cycle's hero at the end of it.
-    const visibleSkies = () => {
-      if (!ready || (intro < .04 && position < .01)) return skyCanvases.map((_, index) => index);
-      const local = modulo(position, count);
-      const targets: number[] = [];
-      if (local < .75) targets.push(1);
-      if (local > count - .75) targets.push(2);
-      return targets;
-    };
-
-    gsap.ticker.add((time) => {
-      pointer.x += (pointer.tx - pointer.x) * .06;
-      pointer.y += (pointer.ty - pointer.y) * .06;
-      // Skip hidden tabs and frames where no hero is visible
-      if (!drawSky || document.hidden) return;
-      const targets = visibleSkies();
-      if (!targets.length) return;
-      // clouds zoom with the camera: far away from the start, a bit closer once inside the hero
-      drawSky(time + 20, pointer.x, pointer.y, mix(skyScaleFar, skyScaleNear, smooth(intro)), targets);
+    const paintSky = createSky();
+    let skyClock = 20;
+    let skyPainted = 0;
+    let skyShift = 0;
+    // Warm-up: paint every canvas once with both palettes and let the GPU finish (plus two frames to upload the
+    // 2D canvases) before the site starts, so the first real frames are cheap.
+    const skyWarm = new Promise<void>((resolve) => {
+      paintSky?.(skyClock, 0, 0, skyScaleFar, 0, skyContexts.map((_, index) => index));
+      paintSky?.(skyClock, 0, 0, skyScaleFar, 0, contactContexts.map((_, index) => index), contactSky, contactContexts);
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      window.setTimeout(resolve, 400); // a background tab gets no animation frames: never hold the start on them
     });
+    let contactPainted = 0;
+    let contactShift = 0;
+
+    gsap.ticker.add((_time, deltaTime) => {
+      if (!paintSky || document.hidden || !ready) return;
+      const local = modulo(position, count);
+      // The hero is visible from one screen before it until one screen after it (the next lap's hero at the end of
+      // a lap). The visible hero swaps between the two lap copies at the lap boundary, so both get the same frame.
+      const heroVisible = local < 1 || local > count - 1;
+      // The contact screen (last of the lap) is visible from the screen before it until the next lap's hero.
+      const contactVisible = local > count - 2;
+      if (!heroVisible && !contactVisible) return;
+
+      skyClock += Math.min(deltaTime, 100) / 1000;
+      const dx = pointer.tx - pointer.x;
+      const dy = pointer.ty - pointer.y;
+      pointer.x += dx * .06;
+      pointer.y += dy * .06;
+      const pointerMoving = Math.abs(dx) + Math.abs(dy) > .0005;
+      const scale = mix(skyScaleFar, skyScaleNear, smooth(intro));
+
+      if (heroVisible) {
+        const fromHero = position - Math.round(position / count) * count;
+        const shift = intro * .3 + fromHero * .45;
+        if (pointerMoving || Math.abs(shift - skyShift) > .0005 || skyClock - skyPainted >= 1 / 15) {
+          skyPainted = skyClock;
+          skyShift = shift;
+          paintSky(skyClock, pointer.x, pointer.y, scale, shift, [1, 2]);
+        }
+      }
+
+      if (contactVisible) {
+        const shift = (local - (count - 1)) * .45;
+        if (pointerMoving || Math.abs(shift - contactShift) > .0005 || skyClock - contactPainted >= 1 / 15) {
+          contactPainted = skyClock;
+          contactShift = shift;
+          // the contact screen of the current lap sits in cycle slot 0 (index 1); its neighbours are painted too so
+          // a lap re-layout never shows a stale frame
+          paintSky(skyClock + 37, pointer.x, pointer.y, scale, shift, [0, 1, 2], contactSky, contactContexts);
+        }
+      }
+    });
+
+    // Anchor buttons: the camera pulls back so start and target are both in view, glides across and zooms into the
+    // target screen. Only the camera moves; the route position jumps to the target when the flight ends.
+    let flying = false;
+    const flight = { from: 0, to: 0, t: 0 };
+    const flyTo = (value: number) => {
+      flight.from = position;
+      flight.to = value;
+      flight.t = 0;
+      const target = pointAt(value);
+      const scaleNow = Number(gsap.getProperty(camera, 'scale'));
+      cam.scale = scaleNow;
+      cam.cx = (window.innerWidth / 2 - Number(gsap.getProperty(camera, 'x'))) / scaleNow;
+      cam.cy = (window.innerHeight / 2 - Number(gsap.getProperty(camera, 'y'))) / scaleNow;
+      const far = Math.min(
+        .42,
+        scaleNow,
+        window.innerWidth / (Math.abs(target.x - cam.cx) + screenWidth * 1.3),
+        window.innerHeight / (Math.abs(target.y - cam.cy) + screenHeight * 1.3),
+      );
+      const slow = reduced.matches ? .4 : 1;
+      flying = true;
+      gsap.timeline({
+        onComplete: () => {
+          position = value;
+          positionTarget = value;
+          intro = 1;
+          introTarget = 1;
+          flying = false;
+        },
+      })
+        .to(cam, { scale: far, duration: .8 * slow, ease: 'power2.inOut' }, 0)
+        .to(cam, { cx: target.x, cy: target.y, duration: 1.3 * slow, ease: 'power2.inOut' }, .3 * slow)
+        .to(flight, { t: 1, duration: 1.3 * slow, ease: 'power2.inOut' }, .3 * slow)
+        .to(cam, { scale: 1, duration: .9 * slow, ease: 'power2.inOut' }, 1.05 * slow);
+    };
 
     gsap.ticker.add(() => {
       if (!ready) return;
+      if (flying) {
+        // the route position follows the flight, so the laps and the skies under the camera stay current
+        position = mix(flight.from, flight.to, flight.t);
+        positionTarget = position;
+        layoutCycles(Math.floor(position / count));
+        applyCamera();
+        return;
+      }
+      if (detailOpen) {
+        if (detailFree) {
+          const easing = reduced.matches ? 1 : .11;
+          detailPos += (detailTarget - detailPos) * easing;
+          intro += (introTarget - intro) * easing;
+          const index = Math.floor(detailPos);
+          const from = stopAt(index);
+          const to = stopAt(index + 1);
+          const amount = smooth(detailPos - index);
+          const zoom = smooth(intro);
+          const { overviewX, overviewY, overviewScale } = view();
+          cam.cx = mix(overviewX, mix(from.x, to.x, amount), zoom);
+          cam.cy = mix(overviewY, mix(from.y, to.y, amount), zoom);
+          cam.scale = mix(overviewScale, 1, zoom);
+          // keep the route position in step with the path (sky, laps) and re-lay the laps out when we cross one
+          position = mix(from.value, to.value, amount);
+          positionTarget = position;
+          const lap = lastCycle;
+          layoutCycles(Math.floor(position / count));
+          if (lastCycle !== lap) syncPush();
+        }
+        applyCamera();
+        return;
+      }
       const easing = reduced.matches ? 1 : .11;
       intro += (introTarget - intro) * easing;
       position += (positionTarget - position) * easing;
@@ -474,7 +1116,12 @@ const groupSlots = [-1, 0, 1, 2];
     position: fixed;
     inset: 0;
     overflow: hidden;
-    background: #0b0b0b;
+    background:
+      radial-gradient(60% 55% at 12% 8%, rgba(255, 255, 255, .6), transparent 70%),
+      radial-gradient(50% 60% at 92% 88%, rgba(176, 156, 238, .3), transparent 70%),
+      radial-gradient(42% 42% at 82% 14%, rgba(255, 178, 204, .26), transparent 70%),
+      radial-gradient(rgba(28, 44, 78, .13) 1px, transparent 1.5px) 0 0 / 30px 30px,
+      #c4d8ec;
   }
 
   .experience {
@@ -506,17 +1153,11 @@ const groupSlots = [-1, 0, 1, 2];
     width: calc(var(--sectionWidth) * 1px);
     height: calc(var(--sectionHeight) * 1px);
     flex-direction: column;
-    justify-content: space-between;
-    padding: 56px 70px 48px;
+    padding: 0;
     color: var(--ink, #111);
     background: var(--flash-color, var(--color));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 18%, transparent);
     transition: background-color .08s linear;
   }
-
-  .screen > .eyebrow,
-  .screen > .screen__main,
-  .screen > footer { position: relative; z-index: 1; }
 
   .screen > * { transition: opacity .45s ease; }
   .experience.is-loading .screen > * { opacity: 0; }
@@ -524,6 +1165,7 @@ const groupSlots = [-1, 0, 1, 2];
   /* Hero: sizes come from the 1600px Figma frame, scaled with the screen width (1cqw = 16px in Figma) */
   .screen[data-screen='0'] {
     container-type: inline-size;
+    overflow: hidden;
     justify-content: center;
     align-items: center;
     padding: 0;
@@ -552,29 +1194,603 @@ const groupSlots = [-1, 0, 1, 2];
     z-index: 1;
     bottom: 3cqw;
     left: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2cqw;
     width: 59.6cqw;
-    margin: 0;
-    padding: 2cqw;
-    color: rgba(0, 0, 0, .7);
+    padding: 1.5cqw 2cqw;
     background: rgba(255, 255, 255, .4);
-    border-radius: 1.5cqw;
+    border-radius: 1.25cqw;
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
+    transform: translateX(-50%);
+  }
+
+  .hero__text {
+    margin: 0;
+    color: rgba(0, 0, 0, .7);
     font-family: Inter, Arial, sans-serif;
     font-size: max(12px, 1.25cqw);
     font-weight: 400;
     line-height: normal;
     text-align: center;
     text-box: trim-both cap alphabetic;
-    transform: translateX(-50%);
   }
+
+  .hero__actions {
+    display: flex;
+    align-items: center;
+    gap: .625cqw;
+  }
+
+  .hero__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 6.3cqw;
+    padding: .75cqw 1cqw;
+    border: 0;
+    border-radius: 1.25cqw;
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(11px, .75cqw);
+    font-weight: 500;
+    line-height: normal;
+    white-space: nowrap;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .hero__button--light { color: #000; background: #fff; }
+  .hero__button--dark { color: #fff; background: rgba(0, 0, 0, .3); }
 
   @container (max-width: 700px) {
     .screen .hero__title { font-size: 17cqw; }
-    .hero__box { width: calc(100% - 6cqw); padding: 20px; font-size: 14px; }
+    .hero__box { width: calc(100% - 6cqw); padding: 20px; gap: 20px; border-radius: 16px; }
+    .hero__text { font-size: 14px; }
+    .hero__button { padding: 10px 16px; font-size: 12px; border-radius: 16px; }
   }
 
-  .experience.is-loading .screen[data-screen='0'] {
+  /* Closing contact screen: big type over the same cloud shader as the hero, in lilac / peach */
+  .experience .screen.screen--contact[data-screen] {
+    display: block;
+    padding: 0;
+    overflow: hidden;
+    background: var(--flash-color, linear-gradient(112deg, #c2d1f5 0%, #e9e4f8 48%, #faf1ef 100%));
+    --ink-rgb: 28 23 18;
+  }
+
+  .contact__top {
+    position: absolute;
+    z-index: 1;
+    top: 5cqh;
+    right: 4cqw;
+    left: 4cqw;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(10px, min(1cqw, 1.8cqh));
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: rgb(var(--ink-rgb) / .6);
+  }
+
+  .contact__top h2, .contact__top p { margin: 0; font: inherit; }
+  .contact__top .contact__eyebrow { font-family: 'DM Sans', Inter, sans-serif; font-weight: 600; }
+
+  .contact__title {
+    position: absolute;
+    z-index: 1;
+    top: 20cqh;
+    left: 4cqw;
+    margin: 0;
+    font-family: 'DM Sans', Inter, sans-serif;
+    font-size: min(9.4cqw, 21cqh);
+    font-variation-settings: 'opsz' 14;
+    font-weight: 600;
+    line-height: .92;
+    letter-spacing: -.035em;
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  .contact__title span { display: block; }
+  .contact__title b { display: inline-block; font-weight: inherit; transition: transform .6s cubic-bezier(.22, 1, .36, 1), color .4s ease; }
+  /* the second line is only an outline: it fills in when the pointer touches a word */
+  .contact__title span:last-child b { color: transparent; -webkit-text-stroke: 1.2px rgb(var(--ink-rgb) / 1); }
+  .contact__title span:last-child b:hover { color: rgb(var(--ink-rgb) / 1); }
+  .contact__title b:hover { transform: translateY(-.04em) skewX(-4deg); }
+  .contact__title b + b { margin-left: .24em; }
+
+  .contact__side { position: absolute; z-index: 1; top: 26cqh; right: 4cqw; width: 36cqw; }
+
+  .contact__intro { margin: 0 0 3cqh; font-family: Inter, Arial, sans-serif; font-size: max(11px, min(1.35cqw, 2.4cqh)); line-height: 1.5; color: rgb(var(--ink-rgb) / .75); }
+  .contact__intro span { display: block; }
+  .contact__intro em { display: block; margin-top: .8cqh; font-style: normal; color: rgb(var(--ink-rgb) / 1); font-weight: 500; }
+
+  .contact__links { display: flex; flex-direction: column; border-bottom: 1px solid rgb(var(--ink-rgb) / .22); }
+
+  .contact__link {
+    position: relative;
+    display: grid;
+    grid-template-columns: 9cqw minmax(0, 1fr) auto;
+    align-items: center;
+    padding: 1.15cqw 1cqw;
+    overflow: hidden;
+    isolation: isolate;
+    border-top: 1px solid rgb(var(--ink-rgb) / .22);
+    color: rgb(var(--ink-rgb) / 1);
+    text-decoration: none;
+    transition: color .4s ease, padding .5s cubic-bezier(.22, 1, .36, 1);
+  }
+
+  .contact__link::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: rgb(var(--ink-rgb) / 1);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform .55s cubic-bezier(.22, 1, .36, 1);
+  }
+
+  .contact__link:hover, .contact__link:focus-visible { padding-left: 2cqw; color: #f4faff; }
+  .contact__link:hover::before, .contact__link:focus-visible::before { transform: scaleX(1); }
+  .contact__link:focus-visible { outline: none; }
+
+  .contact__label { font-family: Inter, Arial, sans-serif; font-size: max(9px, min(.95cqw, 1.7cqh)); letter-spacing: .14em; text-transform: uppercase; opacity: .65; }
+  .contact__value { font-family: 'DM Sans', Inter, sans-serif; font-size: min(1.9cqw, 3.4cqh); font-weight: 600; line-height: 1.1; overflow-wrap: anywhere; }
+  .contact__arrow { display: block; width: 1.3cqw; min-width: 10px; transition: transform .5s cubic-bezier(.22, 1, .36, 1); }
+  .contact__arrow svg { display: block; width: 100%; height: auto; }
+  .contact__link:hover .contact__arrow, .contact__link:focus-visible .contact__arrow { transform: translateX(.4cqw) rotate(-45deg); }
+
+  .contact__foot {
+    position: absolute;
+    z-index: 1;
+    right: 4cqw;
+    bottom: 5cqh;
+    left: 4cqw;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(10px, min(1cqw, 1.8cqh));
+    color: rgb(var(--ink-rgb) / .65);
+  }
+
+  .contact__foot p { margin: 0; }
+
+
+  @container (max-width: 700px) {
+    .contact__title { top: 11cqh; left: 6cqw; font-size: 17cqw; }
+    .contact__side { top: 40cqh; right: 6cqw; left: 6cqw; width: auto; }
+    .contact__top { right: 6cqw; left: 6cqw; }
+    .contact__foot { right: 6cqw; left: 6cqw; }
+    .contact__link { grid-template-columns: 22cqw minmax(0, 1fr) auto; padding: 3cqw 2cqw; }
+    .contact__value { font-size: 4.4cqw; }
+    .contact__label { font-size: 10px; }
+    .contact__intro { font-size: 12px; }
+  }
+
+  /* Cases: sizes come from a 700x443 layout, scaled with the screen (cqw = width, cqh = height) */
+  .screen:not([data-screen='0']) {
+    container-type: size;
+    background: var(--flash-color, linear-gradient(135deg, var(--color), color-mix(in srgb, var(--color) 55%, white)));
+    color: rgb(var(--ink-rgb) / 1);
+    --ink-rgb: 28 23 18;
+    --card-bg: rgba(255, 255, 255, .4);
+    --chip-bg: rgba(255, 255, 255, .65);
+  }
+
+  /* dark backgrounds (e.g. Marketer UX): white text, softer glass */
+  .screen[data-tone='dark']:not([data-screen='0']) {
+    --ink-rgb: 255 255 255;
+    --card-bg: rgba(255, 255, 255, .14);
+    --chip-bg: rgba(255, 255, 255, .18);
+  }
+
+  .case__title {
+    position: absolute;
+    z-index: 1;
+    top: 4.8cqh;
+    left: 4cqw;
+    width: 16em; /* wraps after "... Analysis" on desktop; em follows the title font size */
+    max-width: 90cqw;
+    margin: 0;
+    font-family: 'DM Sans', Inter, sans-serif;
+    font-size: min(4.4cqw, 6.8cqh);
+    font-variation-settings: 'opsz' 14;
+    font-weight: 500;
+    line-height: 1.15;
+    text-transform: uppercase;
+  }
+
+  .case__gallery {
+    position: absolute;
+    z-index: 1;
+    top: 25cqh;
+    bottom: 4cqh;
+    left: 4cqw;
+    right: 4cqw;
+    display: grid;
+    /* the image column follows the available height; the picture keeps a landscape ratio and the card matches it */
+    grid-template-columns: min(54cqw, 76cqh) minmax(0, 1fr);
+    grid-template-rows: auto;
+    align-content: center;
+    column-gap: 3cqw;
+  }
+
+  .case__slider { display: flex; min-width: 0; flex-direction: column; gap: .9cqw; }
+
+  .case__stage { position: relative; aspect-ratio: 1.35; overflow: hidden; cursor: pointer; background: rgba(255, 255, 255, .4); border-radius: 2cqw; }
+
+  .case__stage > img { user-select: none; -webkit-user-drag: none; position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; will-change: transform, opacity; }
+
+  .case__arrow {
+    position: absolute;
+    top: 50%;
+    display: grid;
+    width: 2.6cqw;
+    height: 2.6cqw;
+    min-width: 22px;
+    min-height: 22px;
+    padding: 0;
+    place-items: center;
+    color: #000;
+    background: #fff;
+    border: 0;
+    border-radius: 50%;
+    z-index: 2;
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: background-color .25s ease, transform .25s ease;
+  }
+
+  .case__arrow:hover { background: #d4d4d4; }
+  .case__arrow--prev { left: .9cqw; }
+  .case__arrow--next { right: .9cqw; }
+  .case__arrow:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .case__arrow svg { display: block; width: 40%; height: auto; }
+  .case__arrow--prev svg { transform: scaleX(-1); }
+
+  .case__thumbs { display: flex; flex: none; gap: .7cqw; }
+
+  .case__thumb {
+    flex: 0 0 calc((100% - 2.8cqw) / 5); /* same size whatever the number of pictures */
+    min-width: 0;
+    aspect-ratio: 3 / 2;
+    padding: 0;
+    overflow: hidden;
+    background: rgba(255, 255, 255, .2);
+    border: 1px solid rgba(255, 255, 255, .55);
+    border-radius: .4cqw;
+    cursor: pointer;
+    opacity: .78;
+    outline: 1px solid transparent;
+    outline-offset: 2px;
+    transition: opacity .25s ease, outline-color .25s ease;
+  }
+
+  .case__thumb:hover { opacity: .92; }
+  .case__thumb.is-active { opacity: 1; outline-color: rgb(var(--ink-rgb) / .45); }
+  .case__thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+  .case__card {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1cqw;
+    padding: 1.6cqw;
+    overflow: hidden;
+    background: var(--card-bg);
+    border-radius: 2cqw;
+  }
+
+  .case__card p,
+  .case__card ul { margin: 0; }
+
+  .case__name {
+    font-family: 'DM Sans', Inter, sans-serif;
+    font-size: max(13px, 1.95cqw);
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+
+  .case__card .case__tags { display: flex; flex-wrap: wrap; gap: .5cqw; margin-top: .9cqw; padding: 0; list-style: none; }
+
+  .case__tags li {
+    padding: .4cqw 1cqw;
+    font-family: Inter, Arial, sans-serif;
+    font-size: clamp(10px, 1.05cqw, 12px);
+    font-weight: 500;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: rgb(var(--ink-rgb) / 1);
+    background: var(--chip-bg);
+    border-radius: 99px;
+  }
+
+  .case__label {
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(10px, 1.15cqw);
+    font-weight: 500;
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  .case__card .case__text {
+    margin-top: .6cqw;
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(10px, .95cqw);
+    font-weight: 300;
+    line-height: 1.45;
+    color: rgb(var(--ink-rgb) / .7);
+  }
+
+  .case__actions { display: flex; gap: .625cqw; margin-top: 1.1cqw; }
+
+  .case__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 6.3cqw;
+    padding: .75cqw 1cqw;
+    border: 0;
+    border-radius: 1.25cqw;
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(11px, .75cqw);
+    font-weight: 500;
+    line-height: normal;
+    white-space: nowrap;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .case__button--light { color: #000; background: #fff; }
+  .case__button--dark { color: #fff; background: rgba(0, 0, 0, .3); }
+
+  /* Detail sections: content sits in a container pressed to the left, a project picture and a big outlined number
+     on the right. Colors come from --ink-rgb so they also work on the dark Marketer UX background. */
+  .detail-screen {
+    display: flex;
+    flex-direction: column;
+    padding: 4.8cqh 4cqw 3cqh;
+    overflow: hidden;
+  }
+
+  .detail-screen::after {
+    content: attr(data-num);
+    position: absolute;
+    right: 3cqw;
+    bottom: -5cqh;
+    z-index: 0;
+    font-family: 'DM Sans', Inter, sans-serif;
+    font-size: 36cqh;
+    font-weight: 500;
+    line-height: 1;
+    color: rgb(var(--ink-rgb) / .045);
+    pointer-events: none;
+  }
+
+  .detail__head { position: relative; z-index: 2; display: flex; align-items: center; gap: 1.2cqw; }
+
+  /* small tracked label: clearly below the lead text in the hierarchy */
+  .detail__title {
+    flex: 1;
+    margin: 0;
+    font-family: 'DM Sans', Inter, sans-serif;
+    font-size: max(10px, min(.95cqw, 1.7cqh));
+    font-weight: 500;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: rgb(var(--ink-rgb) / .6);
+  }
+
+  .detail__count { margin-right: 1cqw; font-family: Inter, Arial, sans-serif; font-size: max(10px, .95cqw); letter-spacing: .08em; color: rgb(var(--ink-rgb) / .6); }
+
+  .detail__close {
+    flex: none;
+    padding: .75cqw 1cqw;
+    min-width: 6.3cqw;
+    color: #000;
+    background: #fff;
+    border: 0;
+    border-radius: 1.25cqw;
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(11px, .75cqw);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color .25s ease;
+  }
+
+  .detail__close:hover { background: #d4d4d4; }
+
+  .detail__body { position: relative; z-index: 2; display: flex; flex: 1; min-height: 0; width: 56cqw; flex-direction: column; margin-top: 6cqh; overflow: hidden; }
+
+  .detail__intro { display: flex; flex-direction: column; gap: 3.4cqh; margin-bottom: 3.4cqh; }
+
+  .detail__lead {
+    margin: 0;
+    font-family: 'DM Sans', Inter, sans-serif;
+    font-size: min(2.9cqw, 5cqh);
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -.015em;
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  /* stat table: just hairlines and small numbers, no fill */
+  .detail__metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+    border-top: 1px solid rgb(var(--ink-rgb) / .18);
+  }
+
+  .detail__metrics div { min-width: 0; padding: 1.1cqh 0 1.2cqh; }
+  .detail__metrics div:nth-child(n + 3) { border-top: 1px solid rgb(var(--ink-rgb) / .18); }
+  .detail__metrics div:nth-child(even) { padding-left: 1.8cqw; border-left: 1px solid rgb(var(--ink-rgb) / .18); }
+
+  .detail__metrics dt {
+    font-family: 'DM Sans', Inter, sans-serif;
+    font-size: min(1.7cqw, 3cqh);
+    font-weight: 600;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  .detail__metrics dd {
+    margin: .3cqh 0 0;
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(8px, min(.75cqw, 1.4cqh));
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: rgb(var(--ink-rgb) / .6);
+  }
+
+  /* architecture diagram: two lanes (content on top, access below) joined by labelled arrows */
+  .detail__flow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 6cqw minmax(0, 1fr) 6cqw minmax(0, 1fr);
+    grid-template-rows: auto 8cqh auto;
+    margin: 4cqh 0 0;
+  }
+
+  .detail__node {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 15cqh;
+    flex-direction: column;
+    gap: .6cqh;
+    padding: 1.3cqw;
+    border: 1px solid rgb(var(--ink-rgb) / .3);
+    border-radius: 1.4cqw;
+  }
+
+  .detail__node--auto { background: rgb(var(--ink-rgb) / .06); border-color: rgb(var(--ink-rgb) / .18); }
+  .detail__node--human { border-style: dashed; border-color: rgb(var(--ink-rgb) / .55); }
+
+  .detail__badge {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: .35cqw;
+    margin-bottom: .4cqh;
+    padding: .2cqw .6cqw;
+    border: 1px solid rgb(var(--ink-rgb) / .3);
+    border-radius: 99px;
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(8px, min(.75cqw, 1.4cqh));
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgb(var(--ink-rgb) / .75);
+  }
+
+  .detail__badge svg { width: .95cqw; min-width: 8px; height: auto; fill: none; stroke: currentColor; stroke-width: 1.2; }
+
+  .detail__node h3 { margin: 0; font-family: 'DM Sans', Inter, sans-serif; font-size: min(1.35cqw, 2.6cqh); font-weight: 600; line-height: 1.1; color: rgb(var(--ink-rgb) / 1); }
+
+  .detail__node ul { display: flex; flex-direction: column; gap: .5cqh; margin: auto 0 0; padding: 0; list-style: none; }
+
+  .detail__node li {
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(9px, min(1cqw, 1.8cqh));
+    line-height: 1.3;
+    color: rgb(var(--ink-rgb) / .72);
+  }
+
+  .detail__link { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: .3cqh; min-width: 0; color: rgb(var(--ink-rgb) / .55); }
+  .detail__label { font-family: Inter, Arial, sans-serif; font-size: max(8px, min(.75cqw, 1.4cqh)); letter-spacing: .12em; text-transform: uppercase; }
+
+  .detail__line { display: flex; align-items: center; width: 100%; }
+  .detail__line i { flex: 1; height: 1px; background: currentColor; }
+  .detail__line svg { display: block; flex: none; width: .55cqw; min-width: 5px; height: auto; margin-left: -.5px; }
+
+  .detail__link--down,
+  .detail__link--up { flex-direction: row; }
+  .detail__link--down .detail__line,
+  .detail__link--up .detail__line { width: auto; height: 100%; flex-direction: column; }
+  .detail__link--up .detail__line { flex-direction: column-reverse; }
+  .detail__link--down .detail__line i,
+  .detail__link--up .detail__line i { width: 1px; height: auto; }
+  .detail__link--down .detail__line svg { width: .7cqw; min-width: 6px; margin: -.5px 0 0; }
+  .detail__link--up .detail__line svg { width: .7cqw; min-width: 6px; margin: 0 0 -.5px; }
+
+  .detail__rows { display: flex; flex-direction: column; }
+
+  .detail__row {
+    display: grid;
+    grid-template-columns: 15cqw minmax(0, 1fr);
+    column-gap: 2.5cqw;
+    padding: 2.2cqh 0;
+    border-top: 1px solid rgb(var(--ink-rgb) / .18);
+  }
+
+  .detail__row h3 { margin: 0; font-family: 'DM Sans', Inter, sans-serif; font-size: min(1.8cqw, 3.2cqh); font-weight: 500; line-height: 1.2; color: rgb(var(--ink-rgb) / 1); }
+
+  .detail__row p {
+    margin: 0;
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(11px, min(1.3cqw, 2.35cqh));
+    line-height: 1.5;
+    color: rgb(var(--ink-rgb) / .78);
+  }
+
+  .detail__row p + p { margin-top: .9cqh; }
+
+  .detail__chips { display: flex; flex-wrap: wrap; gap: .5cqw; margin: 1.4cqh 0 0; padding: 0; list-style: none; }
+
+  .detail__chips li {
+    padding: .35cqw .9cqw;
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(9px, min(1cqw, 1.8cqh));
+    font-weight: 500;
+    color: rgb(var(--ink-rgb) / 1);
+    background: var(--chip-bg);
+    border-radius: 99px;
+  }
+
+  .detail__visual {
+    position: absolute;
+    top: 14cqh;
+    right: 4cqw;
+    z-index: 1;
+    width: 32cqw;
+    aspect-ratio: 3 / 2;
+    overflow: hidden;
+    border-radius: 2cqw;
+    box-shadow: 0 2cqw 5cqw rgb(0 0 0 / .14);
+  }
+
+  .detail__visual img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+  @container (max-width: 700px) {
+    .detail__body { width: auto; }
+    .detail__visual { display: none; }
+    .detail__row { grid-template-columns: 1fr; row-gap: 1cqh; }
+    .detail__flow { display: flex; flex-direction: column; gap: 2cqh; }
+    .detail__link { display: none; }
+  }
+
+  @container (max-width: 700px) {
+    .case__title { top: 4cqh; left: 6cqw; width: 88cqw; max-width: none; font-size: 8cqw; }
+    .case__gallery { top: 17cqh; bottom: 3cqh; left: 6cqw; right: 6cqw; grid-template-columns: 1fr; grid-template-rows: 36fr 52fr; row-gap: 2cqh; }
+    .case__thumbs { display: none; }
+    .case__stage { height: 100%; aspect-ratio: auto; }
+    .case__arrow { width: 9cqw; height: 9cqw; }
+    .case__card { padding: 3cqw; border-radius: 4cqw; gap: 1.5cqw; }
+    .case__name, .case__label { font-size: 13px; }
+    .case__text { font-size: 10.5px; }
+    .case__tags li { font-size: 10px; }
+    .case__button { padding: 10px 16px; font-size: 12px; border-radius: 16px; }
+  }
+
+  /* while loading every screen is a flat color block (set in the markup, so it holds from the first paint) */
+  .experience.is-loading .screen[data-screen] {
     background: var(--flash-color, var(--color));
   }
 
@@ -583,86 +1799,69 @@ const groupSlots = [-1, 0, 1, 2];
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    background: url('/hero-sky.webp') center / cover;
     pointer-events: none;
     transition: opacity .6s ease;
   }
 
+  .sky--contact { background: none; }
   .experience.is-loading .sky { opacity: 0; }
 
+  /* "scroll down" hint at the very start: a fine-line mouse whose wheel rolls down, with chevrons that follow */
   .scroll-cue {
     position: fixed;
     z-index: 10;
-    bottom: 1.5rem;
+    bottom: 1.4rem;
     left: 50%;
-    width: 2.5rem;
-    height: 3.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .55rem;
+    width: 2.4rem;
     opacity: 0;
-    color: #f4f1e8;
+    color: #1c1712;
     transform: translate(-50%, .75rem);
-    transition: opacity .4s ease, transform .4s ease;
+    transition: opacity .7s ease, transform .7s ease; /* the whole hint fades to opacity 0 when scrolling starts */
     pointer-events: none;
   }
 
-  .experience.is-ready:not(.has-entered) .scroll-cue {
-    opacity: 1;
-    transform: translate(-50%, 0);
-    animation: cue-bob 1.25s ease-in-out infinite;
+  .experience.is-ready:not(.has-entered) .scroll-cue { opacity: 1; transform: translate(-50%, 0); }
+
+  .scroll-cue svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .scroll-cue rect, .scroll-cue line, .scroll-cue path { stroke: currentColor; stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; }
+
+  .cue__body { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  .cue__wheel { stroke-width: 1.8; opacity: 0; transform-box: fill-box; transform-origin: center; }
+  .cue__chevron { opacity: 0; }
+
+
+  .experience.is-ready .cue__body { animation: cue-draw 1.3s cubic-bezier(.65, 0, .35, 1) .15s forwards; }
+  .experience.is-ready .cue__wheel { animation: cue-wheel 2.4s cubic-bezier(.5, 0, .3, 1) 1.1s infinite; }
+  .experience.is-ready .cue__chevron--1 { animation: cue-chevron 2.4s ease-in-out 1.35s infinite; }
+  .experience.is-ready .cue__chevron--2 { animation: cue-chevron 2.4s ease-in-out 1.6s infinite; }
+
+  @keyframes cue-draw { to { stroke-dashoffset: 0; } }
+
+  @keyframes cue-wheel {
+    0% { opacity: 0; transform: translateY(-2px) scaleY(.6); }
+    14% { opacity: 1; transform: translateY(0) scaleY(1); }
+    58% { opacity: 1; transform: translateY(15px) scaleY(1); }
+    80%, 100% { opacity: 0; transform: translateY(21px) scaleY(.5); }
   }
 
-  .scroll-cue svg { display: block; width: 100%; height: 100%; }
-  .scroll-cue rect, .scroll-cue path { fill: none; stroke: currentColor; stroke-width: 1.5; }
-  .scroll-cue path { stroke-linecap: round; stroke-linejoin: round; }
-
-  @keyframes cue-bob {
-    0%, 100% { translate: 0 0; }
-    50% { translate: 0 .35rem; }
+  @keyframes cue-chevron {
+    0%, 12% { opacity: 0; transform: translateY(-3px); }
+    40% { opacity: .85; transform: translateY(0); }
+    75%, 100% { opacity: 0; transform: translateY(4px); }
   }
 
-  .eyebrow,
-  .screen footer {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 750;
-    letter-spacing: .09em;
-    text-transform: uppercase;
+
+  @media (prefers-reduced-motion: reduce) {
+    .experience.is-ready .cue__body,
+    .experience.is-ready .cue__wheel,
+    .experience.is-ready .cue__chevron,
+    .cue__body { stroke-dashoffset: 0; }
+    .cue__wheel { opacity: 1; }
+    .cue__chevron { opacity: .6; }
   }
-
-  .screen__main {
-    display: grid;
-    grid-template-columns: minmax(0, 1.55fr) minmax(280px, .62fr);
-    align-items: end;
-    gap: 54px;
-  }
-
-  .screen h2 {
-    margin: 0;
-    font-size: 112px;
-    font-weight: 650;
-    line-height: .84;
-    letter-spacing: -.075em;
-  }
-
-  .screen h2 span { display: block; }
-  .screen__main > p { margin: 0; font-size: 20px; line-height: 1.45; }
-
-  .screen footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    padding-top: 20px;
-    border-top: 1px solid color-mix(in srgb, currentColor 32%, transparent);
-  }
-
-  .screen footer a { color: inherit; text-decoration: none; }
-
-  @media (max-width: 700px) {
-    .screen { padding: 70px 90px; }
-    .screen__main { grid-template-columns: 1fr; gap: 36px; }
-    .screen h2 { font-size: 100px; }
-    .screen__main > p { max-width: 700px; font-size: 26px; }
-    .eyebrow, .screen footer { font-size: 17px; }
-  }
-
 </style>

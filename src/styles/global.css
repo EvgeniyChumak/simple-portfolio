@@ -1,8 +1,8 @@
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   font-family: Inter, Arial, sans-serif;
-  color: #f4f1e8;
-  background: #0c0c0c;
+  color: #1c1712;
+  background: #c4d8ec;
   font-synthesis: none;
 }
 
@@ -11,7 +11,7 @@
 }
 
 html {
-  background: #0c0c0c;
+  background: #c4d8ec;
   scroll-behavior: auto;
 }
 
@@ -19,7 +19,7 @@ body {
   min-width: 20rem;
   margin: 0;
   overflow-x: hidden;
-  background: #0c0c0c;
+  background: #c4d8ec;
 }
 
 a {
@@ -32,6 +32,6 @@ a {
 }
 
 ::selection {
-  color: #0c0c0c;
+  color: #1c1712;
   background: #d8ff3e;
 }
