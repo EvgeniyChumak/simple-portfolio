@@ -515,10 +515,11 @@ const groupSlots = [0];
     const view = () => ({
       overviewX: points[0][0],
       overviewY: points[0][1],
+      // phones start closer: only the hero's neighbourhood is in view, so far less has to be drawn
       overviewScale: Math.min(
         (window.innerWidth / 2 - 24) / (cycleX + screenWidth * .5),
         (window.innerHeight / 2 - 24) / (cycleY - screenHeight * .5),
-      ),
+      ) * (lowMemory ? 2.4 : 1),
       focusedScale: 1,
     });
 
