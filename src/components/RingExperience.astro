@@ -403,6 +403,15 @@ const groupSlots = [0];
 
   if (root && camera) {
     if (navigator.maxTouchPoints > 0 || 'ontouchstart' in window) root.classList.add('is-touch');
+    // Phones (iOS Safari above all) run out of graphics memory with the desktop setup: a 3D / will-change camera
+    // layer is rasterized at full size, and in the zoomed-out overview that is the whole multi-lap world (hundreds of
+    // MB), which crashes the tab right around the end of the preloader. Light mode keeps every transform 2D, gives
+    // nothing a permanent layer and reveals the content without per-element fades.
+    const lowMemory = root.classList.contains('is-touch') || window.matchMedia('(max-width: 700px), (pointer: coarse)').matches;
+    if (lowMemory) {
+      root.classList.add('is-light');
+      gsap.defaults({ force3D: false });
+    }
     const count = Number(root.dataset.count ?? 6);
     let cycleX = Number(root.dataset.cycleX ?? 3840);
     let cycleY = Number(root.dataset.cycleY ?? 2160);
@@ -647,7 +656,7 @@ const groupSlots = [0];
         screens.forEach((screen, index) => {
           screen.style.setProperty('--flash-color', activePalette[(index + colorStep) % activePalette.length] ?? activePalette[0]);
         });
-      }, reduced.matches ? 240 : 95);
+      }, reduced.matches ? 240 : lowMemory ? 150 : 95);
 
       preloaderTimeline = gsap.timeline({
         onComplete: () => {
@@ -932,7 +941,7 @@ const groupSlots = [0];
       const { near, far, sections: later } = collectMoving(value, caseCy);
       gsap.set(far, { y: `+=${run.total}` });
       const moving = [...sections, ...near, ...later];
-      moving.forEach((element) => { element.style.willChange = 'transform'; });
+      if (!lowMemory) moving.forEach((element) => { element.style.willChange = 'transform'; });
 
       gsap.timeline({
         onComplete: () => {
@@ -980,7 +989,7 @@ const groupSlots = [0];
       const { near, far, sections: later } = collectMoving(run.value, caseCy);
       gsap.set(far, { y: `-=${run.total}` });
       const moving = [...run.sections, ...near, ...later];
-      moving.forEach((element) => { element.style.willChange = 'transform'; });
+      if (!lowMemory) moving.forEach((element) => { element.style.willChange = 'transform'; });
 
       gsap.timeline({
         onComplete: () => {
@@ -1323,6 +1332,11 @@ const groupSlots = [0];
 
   .screen > * { transition: opacity .45s ease; }
   .experience.is-loading .screen > * { opacity: 0; }
+
+  /* light mode (phones): no permanent camera layer and no per-element fades (each fade is its own layer) */
+  .experience.is-light .camera { will-change: auto; transition: none; }
+  .experience.is-light .screen > * { transition: none; }
+  .experience.is-light.is-loading .screen > * { opacity: 0; visibility: hidden; }
 
   /* Hero: sizes come from the 1600px Figma frame, scaled with the screen width (1cqw = 16px in Figma) */
   .screen[data-screen='0'] {
