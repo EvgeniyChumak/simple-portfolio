@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://simple-portfolio-lime-sigma.vercel.app/sitemap.xml
+Sitemap: https://yevhen-chumak.vercel.app/sitemap.xml

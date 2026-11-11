@@ -18,9 +18,7 @@ export interface CaseAbout { label: string; text: string }
 export interface CaseData {
   id: string;
   title: string;
-  role: string;
   subtitle: string;
-  technologies: string[];
   tags: string[];
   description: string;
   liveUrl?: string;
@@ -117,16 +115,7 @@ export const cases: CaseData[] = [
       ]
     },
     "title": "GOTARIS — Crypto Analysis Platform",
-    "role": "Lead Webflow Developer",
     "subtitle": "A subscription-based crypto analysis platform.",
-    "technologies": [
-      "Webflow",
-      "JavaScript",
-      "Memberstack",
-      "Stripe",
-      "GSAP",
-      "CMS Architecture"
-    ],
     "tags": [
       "Webflow",
       "Memberstack",
@@ -230,16 +219,7 @@ export const cases: CaseData[] = [
   {
     "id": "marketer-ux",
     "title": "Marketer UX — Agency Website Redesign",
-    "role": "Lead Webflow Developer",
     "subtitle": "A digital agency website that I maintained, developed and technically owned throughout nearly three years of working with the company.",
-    "technologies": [
-      "Webflow",
-      "JavaScript",
-      "GSAP",
-      "CMS",
-      "Technical SEO",
-      "Performance Optimization"
-    ],
     "tags": [
       "Webflow",
       "JavaScript",
@@ -392,15 +372,7 @@ export const cases: CaseData[] = [
   {
     "id": "beste-bau",
     "title": "Beste Bau — Real Estate Platform",
-    "role": "Lead Webflow Developer",
     "subtitle": "A real estate website built from scratch in Webflow, with structured CMS listings, property filtering, GSAP interactions and technical SEO.",
-    "technologies": [
-      "Webflow",
-      "GSAP",
-      "Finsweet",
-      "CMS",
-      "Technical SEO"
-    ],
     "tags": [
       "Webflow",
       "CMS listings",
@@ -486,19 +458,7 @@ export const cases: CaseData[] = [
   {
     "id": "immobest",
     "title": "ImmoBest — Real Estate Platform",
-    "role": "Lead Webflow Developer",
     "subtitle": "A real estate website built from scratch in Webflow, with a custom backend that keeps its CMS in sync with Propstack.",
-    "technologies": [
-      "Webflow",
-      "TypeScript",
-      "Node.js",
-      "Vercel",
-      "Propstack",
-      "GSAP",
-      "Finsweet",
-      "CMS",
-      "Technical SEO"
-    ],
     "tags": [
       "Webflow",
       "TypeScript",
@@ -700,16 +660,7 @@ export const cases: CaseData[] = [
   {
     "id": "victory-zx",
     "title": "Victory ZX — Industrial Corporate Website",
-    "role": "Lead Webflow Developer",
     "subtitle": "A large corporate website for a German fire safety and industrial gas systems company with an extensive product catalog and technical content structure.",
-    "technologies": [
-      "Webflow",
-      "JavaScript",
-      "GSAP",
-      "CMS",
-      "Finsweet",
-      "Technical SEO"
-    ],
     "tags": [
       "Webflow",
       "GSAP",
@@ -870,16 +821,7 @@ export const cases: CaseData[] = [
   {
     "id": "relounge",
     "title": "reLounge — Medical Technology",
-    "role": "Lead Webflow Developer",
     "subtitle": "A multilingual website for a medical technology company focused on therapy, recovery and professional healthcare applications.",
-    "technologies": [
-      "Webflow",
-      "JavaScript",
-      "GSAP",
-      "Finsweet",
-      "CMS",
-      "Technical SEO"
-    ],
     "tags": [
       "Webflow",
       "JavaScript",

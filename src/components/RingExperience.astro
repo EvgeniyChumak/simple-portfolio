@@ -30,10 +30,10 @@ const contact = {
 // screenshot and a "see all" list of the rest (the projects that already have a case are left out)
 const skills = {
   groups: [
-    { title: 'Frontend Development', items: ['HTML/CSS', 'JavaScript', 'React', 'Next.js', 'Astro', 'Node.js', 'GSAP', 'API Integrations', 'Three.js / Spline'] },
+    { title: 'Frontend Development', items: ['HTML/CSS', 'JavaScript / TypeScript', 'React', 'Next.js', 'Astro', 'Node.js', 'GSAP', 'API Integrations', 'Three.js / Spline'] },
     { title: 'Webflow Development', items: ['Webflow', 'Finsweet', 'Client-First', 'CMS Architecture', 'Technical SEO', 'Performance Optimization', 'Tryformly', 'Zapier / Make / n8n'] },
     { title: 'Design & Tools', items: ['Figma', 'GitHub', 'Sanity'] },
-    { title: 'Team & Workflow', items: ['ClickUp', 'Asana', 'Daily Team Calls', 'Client Communication', 'Webflow Training'] },
+    { title: 'Team & Workflow', items: ['ClickUp', 'Asana', 'Daily Team Calls', 'Client Communication', 'Mentoring'] },
   ],
   featured: [
     { name: 'Fuhrmann', url: 'https://fuhrmann-website-before-client-tran.vercel.app/', image: '/projects/fuhrmann.webp' },
@@ -1100,8 +1100,8 @@ const groupSlots = [0];
     // Every screen with a sky: its route index, palette and canvases (one per lap copy). A clock offset keeps the
     // screens that share a palette from showing the same clouds.
     const skies = [
-      { index: 0, palette: heroSky, contexts: skyContexts, offset: 0, painted: 0, shift: 0 },
-      { index: count - 1, palette: contactSky, contexts: contactContexts, offset: 37, painted: 0, shift: 0 },
+      { index: 0, palette: heroSky, contexts: skyContexts, offset: 0, painted: 0, shift: 0, slot: -1 },
+      { index: count - 1, palette: contactSky, contexts: contactContexts, offset: 37, painted: 0, shift: 0, slot: -1 },
     ];
     const allSlots = cycles.map((_, index) => index);
     // Warm-up: paint every canvas once with each palette and let the GPU finish (plus two frames to upload the
@@ -1128,7 +1128,8 @@ const groupSlots = [0];
       paintAllSkies();
     }, { passive: true });
 
-    gsap.ticker.add((_time, deltaTime) => {
+    // runs after the camera ticker (registered at the end), so it always sees this frame's lap layout
+    const tickSky = (_time: number, deltaTime: number) => {
       if (!paintSky || document.hidden || !ready) return;
       // signed distance (in screens) from each sky screen to the camera; a sky is painted only within one screen
       const near = skies
@@ -1147,16 +1148,17 @@ const groupSlots = [0];
       near.forEach(({ sky, distance }) => {
         // scrolling pulls the clouds sideways; the hero also drifts while zooming in from the overview
         const shift = distance * .45 + (sky.index === 0 ? intro * .3 : 0);
-        if (!pointerMoving && Math.abs(shift - sky.shift) <= .0005 && skyClock - sky.painted < 1 / 15) return;
+        // only the lap copy being looked at; when that copy changes (lap seam) it is painted at once, otherwise it
+        // would show the frame it got a whole lap ago
+        const lap = Math.round((position - distance - sky.index) / count);
+        const slot = lap - lastCycle + 1;
+        if (slot === sky.slot && !pointerMoving && Math.abs(shift - sky.shift) <= .0005 && skyClock - sky.painted < 1 / 15) return;
         sky.painted = skyClock;
         sky.shift = shift;
-        // only the lap copy being looked at, for both the current lap layout and the one the main ticker is about to
-        // switch to (usually the same slot)
-        const lap = Math.round((position - distance - sky.index) / count);
-        const slots = [...new Set([lap - lastCycle + 1, lap - Math.floor(position / count) + 1])];
-        paintSky(skyClock + sky.offset, pointer.x, pointer.y, scale, shift, slots, sky.palette, sky.contexts);
+        sky.slot = slot;
+        paintSky(skyClock + sky.offset, pointer.x, pointer.y, scale, shift, [slot], sky.palette, sky.contexts);
       });
-    });
+    };
 
     // Anchor buttons: the camera pulls back so start and target are both in view, glides across and zooms into the
     // target screen. Only the camera moves; the route position jumps to the target when the flight ends.
@@ -1247,6 +1249,8 @@ const groupSlots = [0];
       const entered = intro > .04 || position > .01;
       if (entered !== root.classList.contains('has-entered')) root.classList.toggle('has-entered', entered);
     });
+
+    gsap.ticker.add(tickSky);
   }
 </script>
 
@@ -1591,7 +1595,7 @@ const groupSlots = [0];
     color: rgb(var(--ink-rgb) / .6);
   }
 
-  .contact__top h2, .contact__top p { margin: 0; font: inherit; }
+  .contact__top h2 { margin: 0; font: inherit; }
   .contact__top .contact__eyebrow { font-family: 'DM Sans', Inter, sans-serif; font-weight: 600; }
 
   .contact__title {
