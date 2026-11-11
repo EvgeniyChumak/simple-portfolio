@@ -280,8 +280,7 @@ const groupSlots = [0];
     </div>
     <div class="scroll-cue" aria-hidden="true">
       <svg class="cue__touch" viewBox="0 0 36 72" fill="none">
-        <line class="cue__trail" x1="16" y1="8" x2="16" y2="30" pathLength="1"></line>
-        <g class="cue__hand"><g transform="translate(3 32) scale(1.3)"><path class="cue__finger" d="M8.5 13V4.5a1.5 1.5 0 0 1 3 0v6a1.4 1.4 0 0 1 2.8 0v.6a1.4 1.4 0 0 1 2.8 0v.6a1.4 1.4 0 0 1 2.8 0V16a6 6 0 0 1-6 6h-1.5a5.5 5.5 0 0 1-4.6-2.5l-3.6-4.3a1.4 1.4 0 0 1 2.2-1.7L8.5 15Z" vector-effect="non-scaling-stroke"></path></g></g>
+        <g class="cue__hand"><g transform="translate(3 30) scale(1.4)"><path class="cue__finger" d="M8 13v-8.5a1.5 1.5 0 0 1 3 0v7.5M11 11.5v-2a1.5 1.5 0 1 1 3 0v2.5M14 10.5a1.5 1.5 0 0 1 3 0v1.5M17 11.5a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47" vector-effect="non-scaling-stroke"></path></g></g>
       </svg>
       <svg class="cue__mouse" viewBox="0 0 36 72" fill="none">
         <rect class="cue__body" x="3" y="2" width="30" height="48" rx="15" pathLength="1"></rect>
@@ -2235,22 +2234,20 @@ const groupSlots = [0];
   /* phones and touch screens: a finger swiping up instead of the mouse (narrow windows count too, and the script
      adds .is-touch for any device that reports touch points) */
   .scroll-cue .cue__touch { display: none; }
-  .cue__trail { stroke-dasharray: 1; stroke-dashoffset: 1; opacity: .55; }
   .cue__hand { opacity: 0; }
-  /* a closed, filled silhouette so the trail never shows through the finger; hairline outline */
-  .scroll-cue .cue__finger { fill: #eef5fb; stroke-width: .9; }
+  /* an open outline hand drawn with a hairline */
+  .scroll-cue .cue__finger { fill: none; stroke-width: .9; }
 
   @media (hover: none), (pointer: coarse), (max-width: 700px) {
     .scroll-cue .cue__mouse { display: none; }
     .scroll-cue .cue__touch { display: block; }
     .experience.is-ready .cue__hand { animation: cue-swipe 2.2s cubic-bezier(.45, 0, .25, 1) .4s infinite; }
-    .experience.is-ready .cue__trail { animation: cue-trail 2.2s cubic-bezier(.45, 0, .25, 1) .4s infinite; }
   }
 
   .experience.is-touch .scroll-cue .cue__mouse { display: none; }
   .experience.is-touch .scroll-cue .cue__touch { display: block; }
   .experience.is-touch.is-ready .cue__hand { animation: cue-swipe 2.2s cubic-bezier(.45, 0, .25, 1) .4s infinite; }
-  .experience.is-touch.is-ready .cue__trail { animation: cue-trail 2.2s cubic-bezier(.45, 0, .25, 1) .4s infinite; }
+
 
   @keyframes cue-swipe {
     0% { opacity: 0; transform: translateY(10px); }
@@ -2259,18 +2256,10 @@ const groupSlots = [0];
     82%, 100% { opacity: 0; transform: translateY(-14px); }
   }
 
-  /* the trail is drawn upwards behind the fingertip, then fades */
-  @keyframes cue-trail {
-    0%, 18% { stroke-dashoffset: -1; opacity: .55; }
-    62% { stroke-dashoffset: 0; opacity: .55; }
-    82%, 100% { stroke-dashoffset: 0; opacity: 0; }
-  }
 
   @media (prefers-reduced-motion: reduce) {
     .experience.is-ready .cue__hand,
-    .experience.is-ready .cue__trail,
-    .experience.is-touch.is-ready .cue__hand,
-    .experience.is-touch.is-ready .cue__trail { animation: none; }
+    .experience.is-touch.is-ready .cue__hand { animation: none; }
     .cue__hand { opacity: 1; }
     .experience.is-ready .cue__body,
     .experience.is-ready .cue__wheel,
