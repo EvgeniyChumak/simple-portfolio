@@ -26,19 +26,58 @@ const contact = {
   year: new Date().getFullYear(),
 };
 
-// Screens: the hero, the case studies, a closing contact screen. The route zigzags right, down, right, down...
-// and an EVEN number of screens makes it alternate across laps too (the lap offset is count/2 columns and rows).
-const total = cases.length + 2;
-if (total % 2) console.warn('RingExperience: use an even number of screens so the scroll keeps alternating horizontal/vertical');
+// Skills & more works screen: skill groups from the old portfolio's Services section, then a few more projects with a
+// screenshot and a "see all" list of the rest (the projects that already have a case are left out)
+const skills = {
+  groups: [
+    { title: 'Frontend Development', items: ['HTML/CSS', 'JavaScript', 'React', 'Next.js', 'Astro', 'Node.js', 'GSAP', 'API Integrations', 'Three.js / Spline'] },
+    { title: 'Webflow Development', items: ['Webflow', 'Finsweet', 'Client-First', 'CMS Architecture', 'Technical SEO', 'Performance Optimization', 'Tryformly', 'Zapier / Make / n8n'] },
+    { title: 'Design & Tools', items: ['Figma', 'GitHub', 'Sanity'] },
+    { title: 'Team & Workflow', items: ['ClickUp', 'Asana', 'Daily Team Calls', 'Client Communication', 'Webflow Training'] },
+  ],
+  featured: [
+    { name: 'Fuhrmann', url: 'https://fuhrmann-website-before-client-tran.vercel.app/', image: '/projects/fuhrmann.webp' },
+    { name: 'Rohlmann', url: 'https://www.rohlmann-steuer.de/', image: '/projects/rohlmann.webp' },
+    { name: 'ByteSnipers', url: 'https://www.bytesnipers.com/', image: '/projects/bytesnipers.webp' },
+    { name: 'esport Stores', url: 'https://www.esport-stores.com/', image: '/projects/esport-stores.webp' },
+  ],
+  more: [
+    ['aquadona', 'Aquadona', 'https://www.aquadona.com/trinkwasserbrunnen-bach'],
+    ['chiropraxis-gaertner', 'Chiropraxis Gärtner', 'https://www.chiropraxis-gaertner.de/'],
+    ['coldbase', 'Coldbase', 'https://www.coldbase.de/'],
+    ['cycura', 'Cycura', 'https://www.cycura.de/en'],
+    ['erkiert-mainka', 'Erkiert & Mainka', 'https://www.erkiertmainka.com/'],
+    ['ertan-kollegen', 'Ertan & Kollegen', 'https://ertan-kollegen.webflow.io/'],
+    ['gravity', 'Gravity Livemusic', 'https://www.gravity-livemusic.com/'],
+    ['gruender-starthilfe', 'Gründer Starthilfe', 'https://www.gruender-starthilfe.de/'],
+    ['karma-service', 'Karma Service', 'https://www.karma-service.de/'],
+    ['markus-mensch', 'Markus Mensch', 'https://www.markus-mensch.de/'],
+    ['medienhafen', 'MedienHafen', 'https://www.medienhafen-dus.de/'],
+    ['modulacht', 'Modulacht', 'https://www.modulacht.de/'],
+    ['tp-lift', 'TP Lift', 'https://www.tp-lift.com/'],
+    ['wavenine', 'Wave Nine', 'https://wavenine.com/'],
+    ['5-tage-challenge', '5 Tage Challenge', 'https://www.5tagechallenge.de/'],
+    ['braeuning', 'Bräuning', 'https://www.braeuning-unternehmensberatung.de/'],
+    ['flexxter', 'Flexxter', 'https://www.flexxter.com/'],
+    ['istok', 'Istok', 'https://k129---istok-one.webflow.io/'],
+  ].map(([id, name, url]) => ({ name, url, image: `/projects/${id}.webp` })),
+};
+
+// Screens: the hero, the case studies, skills, a closing contact screen. The route zigzags right, down, right, down...
+// The next lap starts one step after the last screen: ceil(n/2) columns and floor(n/2) rows further on (with an odd
+// number of screens the seam simply has two moves in the same direction).
+const total = cases.length + 3;
 const grid = Array.from({ length: total }, (_, index) => [Math.ceil(index / 2), Math.floor(index / 2)]);
-const lap = total / 2;
-const cycleX = sectionWidth * lap;
-const cycleY = sectionHeight * lap;
+const lapX = Math.ceil(total / 2);
+const lapY = Math.floor(total / 2);
+const cycleX = sectionWidth * lapX;
+const cycleY = sectionHeight * lapY;
 const place = (index: number) => ({ color: iceColors[index % iceColors.length], x: grid[index][0] * sectionWidth, y: grid[index][1] * sectionHeight });
 
 const sections = [
   { kind: 'hero' as const, ...hero, ...place(0) },
   ...cases.map((project, index) => ({ kind: 'case' as const, ...project, ...place(index + 1) })),
+  { kind: 'skills' as const, ...skills, ...place(total - 2) },
   { kind: 'contact' as const, ...contact, ...place(total - 1) },
 ];
 
@@ -89,7 +128,14 @@ const detailParts = (project: (typeof cases)[number]): DetailPart[] => {
   return parts;
 };
 
-const groupSlots = [-1, 0, 1, 2];
+// "See all projects" opens the rest like a case's detail sections: six projects per section
+const worksPerPage = 6;
+const worksPages = Array.from({ length: Math.ceil(skills.more.length / worksPerPage) }, (_, page) =>
+  skills.more.slice(page * worksPerPage, (page + 1) * worksPerPage));
+
+// The scene keeps four copies of the lap (the one before, the current one and two after). Only slot 0 is in the HTML;
+// the script clones the other three, which keeps the page about four times lighter.
+const groupSlots = [0];
 ---
 
 <div
@@ -99,7 +145,8 @@ const groupSlots = [-1, 0, 1, 2];
   data-cycle-x={cycleX}
   data-cycle-y={cycleY}
   data-grid={JSON.stringify(grid)}
-  data-lap={lap}
+  data-lap-x={lapX}
+  data-lap-y={lapY}
   data-colors={JSON.stringify(iceColors)}
   tabindex="0"
 >
@@ -109,21 +156,51 @@ const groupSlots = [-1, 0, 1, 2];
         <div class="cycle" data-cycle data-slot={slot}>
           {sections.map((section, index) => (
             <section
-              class={section.kind === 'contact' ? 'screen screen--contact' : 'screen'}
+              class={section.kind === 'contact' || section.kind === 'skills' ? `screen screen--${section.kind}` : 'screen'}
               data-screen={index}
-              data-case={section.kind === 'case' ? section.id : undefined}
+              data-case={section.kind === 'case' ? section.id : section.kind === 'skills' ? 'more-works' : undefined}
               style={`left:${section.x}px;top:${section.y}px;--color:${section.color}`}
             >
               {section.kind === 'hero' ? (
                 <>
                   <canvas class="sky" data-sky aria-hidden="true"></canvas>
-                  <h2 class="hero__title">{section.title}</h2>
+                  <h1 class="hero__title">{section.title}</h1>
                   <div class="hero__box">
                     <p class="hero__text">{section.text}</p>
                     <div class="hero__actions">
                       <button class="hero__button hero__button--light" type="button" data-go-works>Go to works</button>
                       <button class="hero__button hero__button--dark" type="button" data-go-contact>Contact me</button>
                     </div>
+                  </div>
+                </>
+              ) : section.kind === 'skills' ? (
+                <>
+                  <div class="skills__grid">
+                    {section.groups.map((group) => (
+                      <article class="skills__card">
+                        <h2 class="skills__heading">{group.title}</h2>
+                        <ul class="skills__list">
+                          {group.items.map((item) => (
+                            <li>
+                              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.2 8.4l3.1 3.1 6.5-7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </article>
+                    ))}
+                  </div>
+                  <div class="works">
+                    <h2 class="works__label">More works</h2>
+                    <div class="works__grid">
+                      {section.featured.map((work) => (
+                        <a class="works__card" href={work.url} target="_blank" rel="noreferrer">
+                          <span class="works__shot"><img src={work.image} alt={`${work.name} website`} width="1530" height="900" loading="lazy" decoding="async" /></span>
+                          <span class="works__name">{work.name}<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 12L12 4M5.5 4H12v6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                        </a>
+                      ))}
+                    </div>
+                    <button class="works__all" type="button" data-case-more>See all projects</button>
                   </div>
                 </>
               ) : section.kind === 'contact' ? (
@@ -153,7 +230,7 @@ const groupSlots = [-1, 0, 1, 2];
                 </>
               ) : (
                 <>
-                  <h2 class="case__title">{section.title}</h2>
+                  <h2 class="case__title">{section.title.split(' — ')[0]}{section.title.includes(' — ') && <span class="case__title-rest"> — {section.title.split(' — ').slice(1).join(' — ')}</span>}</h2>
                   <div class="case__gallery">
                     <div class="case__slider" data-case-slider>
                       <div class="case__stage">
@@ -215,12 +292,12 @@ const groupSlots = [-1, 0, 1, 2];
       {detailParts(project).map((part, groupIndex, groups) => (
         <section class="screen detail-screen" data-num={String(groupIndex + 1).padStart(2, '0')}>
           <div class="detail__head">
-            <h2 class="detail__title">{project.title}</h2>
+            <h2 class="detail__title">{project.title.split(' — ')[0]}{project.title.includes(' — ') && <span class="detail__title-rest"> — {project.title.split(' — ').slice(1).join(' — ')}</span>}</h2>
             <span class="detail__count">{String(groupIndex + 1).padStart(2, '0')} / {String(groups.length).padStart(2, '0')}</span>
             {groupIndex === 0 && project.liveUrl && (
               <a class="case__button case__button--dark" href={project.liveUrl} target="_blank" rel="noreferrer">View project</a>
             )}
-            <button class="detail__close" type="button" data-detail-close>Close</button>
+            <button class="detail__close" type="button" data-detail-close aria-label="Close"><span class="detail__close-text">Close</span><svg class="detail__close-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg></button>
           </div>
           <div class="detail__body">
             {groupIndex === 0 && (
@@ -291,6 +368,26 @@ const groupSlots = [-1, 0, 1, 2];
       ))}
     </template>
   ))}
+  <template data-detail="more-works">
+    {worksPages.map((page, pageIndex) => (
+      <section class="screen detail-screen detail-screen--works" data-num={String(pageIndex + 1).padStart(2, '0')}>
+        <div class="detail__head">
+          <h2 class="detail__title">More works</h2>
+          <span class="detail__count">{String(pageIndex + 1).padStart(2, '0')} / {String(worksPages.length).padStart(2, '0')}</span>
+          <button class="detail__close" type="button" data-detail-close aria-label="Close"><span class="detail__close-text">Close</span><svg class="detail__close-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg></button>
+        </div>
+        <div class="more__grid">
+          {page.map((work) => (
+            <a class="works__card" href={work.url} target="_blank" rel="noreferrer">
+              <span class="works__shot"><img src={work.image} alt={`${work.name} website`} width="1530" height="900" loading="lazy" decoding="async" /></span>
+              <span class="works__name">{work.name}<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 12L12 4M5.5 4H12v6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+            </a>
+          ))}
+        </div>
+        {pageIndex === worksPages.length - 1 && <p class="more__nda">And many more — unfortunately under NDA.</p>}
+      </section>
+    ))}
+  </template>
 </div>
 
 <script>
@@ -304,12 +401,30 @@ const groupSlots = [-1, 0, 1, 2];
     const count = Number(root.dataset.count ?? 6);
     let cycleX = Number(root.dataset.cycleX ?? 3840);
     let cycleY = Number(root.dataset.cycleY ?? 2160);
+    // clone the server-rendered lap into slots -1, 1 and 2 (the page has a single h1: the copies get a <p>)
+    const sourceCycle = root.querySelector<HTMLElement>('[data-cycle]');
+    if (sourceCycle) {
+      [-1, 1, 2].forEach((slot) => {
+        const copy = sourceCycle.cloneNode(true) as HTMLElement;
+        copy.dataset.slot = String(slot);
+        copy.querySelectorAll('h1').forEach((heading) => {
+          const text = document.createElement('p');
+          text.className = heading.className;
+          [...heading.attributes].forEach((attribute) => text.setAttribute(attribute.name, attribute.value));
+          text.append(...heading.childNodes);
+          heading.replaceWith(text);
+        });
+        if (slot < 0) sourceCycle.before(copy);
+        else camera.append(copy);
+      });
+    }
     const cycles = [...root.querySelectorAll<HTMLElement>('[data-cycle]')];
     const screens = [...root.querySelectorAll<HTMLElement>('[data-screen]')];
     // Ice palette
     const activePalette: string[] = JSON.parse(root.dataset.colors ?? '[]');
     const grid: number[][] = JSON.parse(root.dataset.grid ?? '[]');
-    const lap = Number(root.dataset.lap ?? 3);
+    const lapX = Number(root.dataset.lapX ?? 3);
+    const lapY = Number(root.dataset.lapY ?? 3);
     let screenWidth = 1280;
     let screenHeight = 720;
     let points: number[][] = [];
@@ -323,6 +438,14 @@ const groupSlots = [-1, 0, 1, 2];
     let ready = false;
     let detailOpen = false;
     let flickerTimer: number | undefined;
+    // last camera transform written, so a page at rest does not restyle the camera every frame
+    let cameraKey = '';
+    const writeCamera = (x: number, y: number, scale: number) => {
+      const key = `${x.toFixed(2)}|${y.toFixed(2)}|${scale.toFixed(5)}`;
+      if (key === cameraKey) return;
+      cameraKey = key;
+      gsap.set(camera, { x, y, scale, transformOrigin: '0 0' });
+    };
     let preloaderTimeline: gsap.core.Timeline | null = null;
 
     const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -332,10 +455,10 @@ const groupSlots = [-1, 0, 1, 2];
 
     const layoutGeometry = () => {
       const desktop = window.innerWidth > 700;
-      screenWidth = Math.max(320, desktop ? window.innerWidth * .95 : window.innerWidth - 16);
+      screenWidth = Math.max(320, window.innerWidth * (desktop ? .95 : .98));
       screenHeight = Math.max(320, window.innerHeight);
-      cycleX = screenWidth * lap;
-      cycleY = screenHeight * lap;
+      cycleX = screenWidth * lapX;
+      cycleY = screenHeight * lapY;
       const positions = grid.map(([column, row]) => [column * screenWidth, row * screenHeight]);
       points = positions.map(([x, y]) => [x + screenWidth / 2, y + screenHeight / 2]);
 
@@ -351,6 +474,7 @@ const groupSlots = [-1, 0, 1, 2];
       });
 
       lastCycle = Number.NaN;
+      cameraKey = '';
       layoutCycles(Math.floor(position / count));
     };
 
@@ -527,6 +651,7 @@ const groupSlots = [-1, 0, 1, 2];
           preloaderTimeline = null;
           screens.forEach((screen) => screen.style.removeProperty('--flash-color'));
           gsap.set(camera, { x: baseX, y: baseY, scale: overviewScale });
+          cameraKey = '';
           root.classList.remove('is-loading');
           root.classList.add('is-ready');
           ready = true;
@@ -685,12 +810,7 @@ const groupSlots = [-1, 0, 1, 2];
     let detailTarget = 0;
 
     const applyCamera = () => {
-      gsap.set(camera, {
-        x: window.innerWidth / 2 - cam.cx * cam.scale,
-        y: window.innerHeight / 2 - cam.cy * cam.scale,
-        scale: cam.scale,
-        transformOrigin: '0 0',
-      });
+      writeCamera(window.innerWidth / 2 - cam.cx * cam.scale, window.innerHeight / 2 - cam.cy * cam.scale, cam.scale);
     };
 
     // how many detail slots lie before a screen of the route, and the matching shift down
@@ -906,8 +1026,14 @@ const groupSlots = [-1, 0, 1, 2];
     // Hero sky: one WebGL shader paints the hero canvases. Kept cheap: a small canvas, 4 noise octaves, only
     // while a hero is on screen, every frame only while something moves (mouse / scroll) and otherwise just the
     // slow drift at ~15 fps. Until the first frame the canvas shows the static picture (CSS background).
-    const skyWidth = 448;
-    const skyHeight = 252;
+    // the long side is 448px; the short side follows the screen, so the clouds are never stretched (phones)
+    const skySize = () => {
+      const long = 448;
+      return screenWidth >= screenHeight
+        ? [long, Math.round(long * screenHeight / screenWidth)]
+        : [Math.round(long * screenWidth / screenHeight), long];
+    };
+    let [skyWidth, skyHeight] = skySize();
     const skyCanvases = (selector: string) => [...root.querySelectorAll<HTMLCanvasElement>(selector)].map((canvas) => {
       canvas.width = skyWidth;
       canvas.height = skyHeight;
@@ -944,14 +1070,20 @@ const groupSlots = [-1, 0, 1, 2];
       const position = gl.getAttribLocation(program, 'aPos');
       gl.enableVertexAttribArray(position);
       gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-      gl.viewport(0, 0, canvas.width, canvas.height);
-      gl.uniform2f(gl.getUniformLocation(program, 'uRes'), canvas.width, canvas.height);
+      const uRes = gl.getUniformLocation(program, 'uRes');
+      const fit = () => {
+        canvas.width = skyWidth;
+        canvas.height = skyHeight;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.uniform2f(uRes, canvas.width, canvas.height);
+      };
+      fit();
       const uTime = gl.getUniformLocation(program, 'uTime');
       const uMouse = gl.getUniformLocation(program, 'uMouse');
       const uScale = gl.getUniformLocation(program, 'uScale');
       const uShift = gl.getUniformLocation(program, 'uShift');
       const uColors = ['uBaseA', 'uBaseB', 'uTintA', 'uTintB', 'uTintC'].map((name) => gl.getUniformLocation(program, name));
-      return (time: number, x: number, y: number, scale: number, shift: number, slots: number[], palette: SkyPalette = heroSky, targets = skyContexts) => {
+      const paint = (time: number, x: number, y: number, scale: number, shift: number, slots: number[], palette: SkyPalette = heroSky, targets = skyContexts) => {
         uColors.forEach((location, index) => gl.uniform3fv(location, palette[index]));
         gl.uniform1f(uTime, time);
         gl.uniform2f(uMouse, x, y);
@@ -960,31 +1092,49 @@ const groupSlots = [-1, 0, 1, 2];
         gl.drawArrays(gl.TRIANGLES, 0, 3);
         slots.forEach((slot) => targets[slot]?.drawImage(canvas, 0, 0));
       };
+      return { paint, fit };
     };
-    const paintSky = createSky();
+    const sky = createSky();
+    const paintSky = sky?.paint;
     let skyClock = 20;
-    let skyPainted = 0;
-    let skyShift = 0;
-    // Warm-up: paint every canvas once with both palettes and let the GPU finish (plus two frames to upload the
+    // Every screen with a sky: its route index, palette and canvases (one per lap copy). A clock offset keeps the
+    // screens that share a palette from showing the same clouds.
+    const skies = [
+      { index: 0, palette: heroSky, contexts: skyContexts, offset: 0, painted: 0, shift: 0 },
+      { index: count - 1, palette: contactSky, contexts: contactContexts, offset: 37, painted: 0, shift: 0 },
+    ];
+    const allSlots = cycles.map((_, index) => index);
+    // Warm-up: paint every canvas once with each palette and let the GPU finish (plus two frames to upload the
     // 2D canvases) before the site starts, so the first real frames are cheap.
+    const paintAllSkies = () => skies.forEach((item) => paintSky?.(skyClock + item.offset, pointer.x, pointer.y, skyScaleFar, 0, allSlots, item.palette, item.contexts));
     const skyWarm = new Promise<void>((resolve) => {
-      paintSky?.(skyClock, 0, 0, skyScaleFar, 0, skyContexts.map((_, index) => index));
-      paintSky?.(skyClock, 0, 0, skyScaleFar, 0, contactContexts.map((_, index) => index), contactSky, contactContexts);
+      paintAllSkies();
       requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       window.setTimeout(resolve, 400); // a background tab gets no animation frames: never hold the start on them
     });
-    let contactPainted = 0;
-    let contactShift = 0;
+
+    // a new screen shape (rotation, resize) gets canvases of the new shape, painted once right away
+    window.addEventListener('resize', () => {
+      const [width, height] = skySize();
+      if (width === skyWidth && height === skyHeight) return;
+      skyWidth = width;
+      skyHeight = height;
+      skies.forEach((item) => item.contexts.forEach((context) => {
+        if (!context) return;
+        context.canvas.width = width;
+        context.canvas.height = height;
+      }));
+      sky?.fit();
+      paintAllSkies();
+    }, { passive: true });
 
     gsap.ticker.add((_time, deltaTime) => {
       if (!paintSky || document.hidden || !ready) return;
-      const local = modulo(position, count);
-      // The hero is visible from one screen before it until one screen after it (the next lap's hero at the end of
-      // a lap). The visible hero swaps between the two lap copies at the lap boundary, so both get the same frame.
-      const heroVisible = local < 1 || local > count - 1;
-      // The contact screen (last of the lap) is visible from the screen before it until the next lap's hero.
-      const contactVisible = local > count - 2;
-      if (!heroVisible && !contactVisible) return;
+      // signed distance (in screens) from each sky screen to the camera; a sky is painted only within one screen
+      const near = skies
+        .map((sky) => ({ sky, distance: modulo(position - sky.index + count / 2, count) - count / 2 }))
+        .filter(({ distance }) => Math.abs(distance) < 1);
+      if (!near.length) return;
 
       skyClock += Math.min(deltaTime, 100) / 1000;
       const dx = pointer.tx - pointer.x;
@@ -994,26 +1144,18 @@ const groupSlots = [-1, 0, 1, 2];
       const pointerMoving = Math.abs(dx) + Math.abs(dy) > .0005;
       const scale = mix(skyScaleFar, skyScaleNear, smooth(intro));
 
-      if (heroVisible) {
-        const fromHero = position - Math.round(position / count) * count;
-        const shift = intro * .3 + fromHero * .45;
-        if (pointerMoving || Math.abs(shift - skyShift) > .0005 || skyClock - skyPainted >= 1 / 15) {
-          skyPainted = skyClock;
-          skyShift = shift;
-          paintSky(skyClock, pointer.x, pointer.y, scale, shift, [1, 2]);
-        }
-      }
-
-      if (contactVisible) {
-        const shift = (local - (count - 1)) * .45;
-        if (pointerMoving || Math.abs(shift - contactShift) > .0005 || skyClock - contactPainted >= 1 / 15) {
-          contactPainted = skyClock;
-          contactShift = shift;
-          // the contact screen of the current lap sits in cycle slot 0 (index 1); its neighbours are painted too so
-          // a lap re-layout never shows a stale frame
-          paintSky(skyClock + 37, pointer.x, pointer.y, scale, shift, [0, 1, 2], contactSky, contactContexts);
-        }
-      }
+      near.forEach(({ sky, distance }) => {
+        // scrolling pulls the clouds sideways; the hero also drifts while zooming in from the overview
+        const shift = distance * .45 + (sky.index === 0 ? intro * .3 : 0);
+        if (!pointerMoving && Math.abs(shift - sky.shift) <= .0005 && skyClock - sky.painted < 1 / 15) return;
+        sky.painted = skyClock;
+        sky.shift = shift;
+        // only the lap copy being looked at, for both the current lap layout and the one the main ticker is about to
+        // switch to (usually the same slot)
+        const lap = Math.round((position - distance - sky.index) / count);
+        const slots = [...new Set([lap - lastCycle + 1, lap - Math.floor(position / count) + 1])];
+        paintSky(skyClock + sky.offset, pointer.x, pointer.y, scale, shift, slots, sky.palette, sky.contexts);
+      });
     });
 
     // Anchor buttons: the camera pulls back so start and target are both in view, glides across and zooms into the
@@ -1089,6 +1231,8 @@ const groupSlots = [-1, 0, 1, 2];
       const easing = reduced.matches ? 1 : .11;
       intro += (introTarget - intro) * easing;
       position += (positionTarget - position) * easing;
+      if (Math.abs(introTarget - intro) < 1e-4) intro = introTarget;
+      if (Math.abs(positionTarget - position) < 1e-4) position = positionTarget;
 
       const route = pointAt(position);
       layoutCycles(route.cycle);
@@ -1099,13 +1243,9 @@ const groupSlots = [-1, 0, 1, 2];
       const y = mix(overviewY, route.y, zoom);
       const scale = mix(overviewScale, focusedScale, zoom);
 
-      gsap.set(camera, {
-        x: window.innerWidth / 2 - x * scale,
-        y: window.innerHeight / 2 - y * scale,
-        scale,
-        transformOrigin: '0 0',
-      });
-      root.classList.toggle('has-entered', intro > .04 || position > .01);
+      writeCamera(window.innerWidth / 2 - x * scale, window.innerHeight / 2 - y * scale, scale);
+      const entered = intro > .04 || position > .01;
+      if (entered !== root.classList.contains('has-entered')) root.classList.toggle('has-entered', entered);
     });
   }
 </script>
@@ -1136,8 +1276,9 @@ const groupSlots = [-1, 0, 1, 2];
     left: 0;
     width: 0;
     height: 0;
-    will-change: transform;
   }
+
+  .camera { will-change: transform; }
 
   .camera {
     z-index: 1;
@@ -1200,10 +1341,8 @@ const groupSlots = [-1, 0, 1, 2];
     gap: 2cqw;
     width: 59.6cqw;
     padding: 1.5cqw 2cqw;
-    background: rgba(255, 255, 255, .4);
+    background: rgba(255, 255, 255, .45);
     border-radius: 1.25cqw;
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
     transform: translateX(-50%);
   }
 
@@ -1258,6 +1397,182 @@ const groupSlots = [-1, 0, 1, 2];
     overflow: hidden;
     background: var(--flash-color, linear-gradient(112deg, #c2d1f5 0%, #e9e4f8 48%, #faf1ef 100%));
     --ink-rgb: 28 23 18;
+  }
+
+  /* Skills & more works: one flat-colored screen, four skill cards on top and four extra projects below */
+  .experience .screen.screen--skills[data-screen] {
+    display: block;
+    padding: 0;
+    overflow: hidden;
+    background: var(--flash-color, var(--color));
+    --ink-rgb: 28 23 18;
+  }
+
+  /* phones: the skill cards are as tall as their content and the works follow right below them (a container query
+     cannot style the screen itself, so this one is a media query on the same 700px breakpoint as the script) */
+  @media (max-width: 700px) {
+    .experience .screen.screen--skills[data-screen] { display: flex; flex-direction: column; gap: 3cqh; padding: 3cqh 4cqw; }
+  }
+
+  /* more works on the left, skills on the right (2 x 2), both from the top */
+  .skills__grid {
+    position: absolute;
+    z-index: 1;
+    top: 7cqh;
+    bottom: 7cqh;
+    right: 4cqw;
+    width: 44cqw;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 1.2cqw;
+  }
+
+  .skills__card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1.6cqh;
+    min-height: 0;
+    padding: 1.7cqw 1.8cqw;
+    overflow: hidden;
+    background: rgba(255, 255, 255, .45);
+    border-radius: 1.1cqw;
+  }
+
+  .skills__heading {
+    margin: 0;
+    font-family: 'DM Sans', Inter, sans-serif;
+    font-size: min(1.5cqw, 2.8cqh);
+    font-weight: 500;
+    line-height: 1.15;
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  .skills__list { display: flex; flex-direction: column; gap: .75cqh; margin: 0; padding: 0; list-style: none; }
+
+  .skills__list li {
+    display: flex;
+    align-items: center;
+    gap: .5cqw;
+    min-width: 0;
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(9px, min(.82cqw, 1.55cqh));
+    font-weight: 300;
+    line-height: 1.25;
+    color: rgb(var(--ink-rgb) / .8);
+  }
+
+  .skills__list svg { flex: none; width: max(9px, .85cqw); height: auto; color: rgb(var(--ink-rgb) / .7); }
+
+  .works {
+    position: absolute;
+    z-index: 1;
+    top: 7cqh;
+    left: 4cqw;
+    bottom: 7cqh;
+    width: 44cqw;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 2.4cqh;
+  }
+
+  .works__label {
+    margin: 0;
+    font-family: 'DM Sans', Inter, sans-serif;
+    font-size: max(10px, min(.95cqw, 1.7cqh));
+    font-weight: 500;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: rgb(var(--ink-rgb) / .6);
+  }
+
+  .works__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.4cqh 1.2cqw; }
+
+  .works__card { display: flex; flex-direction: column; gap: 1.2cqh; min-width: 0; min-height: 0; color: rgb(var(--ink-rgb) / 1); text-decoration: none; }
+
+  /* screenshots keep their own 1530 x 900 shape */
+  .works__shot { display: block; aspect-ratio: 17 / 10; overflow: hidden; border-radius: .7cqw; background: rgba(255, 255, 255, .45); }
+
+  .works__shot img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+    transition: transform .8s cubic-bezier(.22, 1, .36, 1);
+  }
+
+  .works__card:hover .works__shot img, .works__card:focus-visible .works__shot img { transform: scale(1.04); }
+  .works__card:focus-visible { outline: none; }
+
+  .works__name {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1cqw;
+    font-family: 'DM Sans', Inter, sans-serif;
+    font-size: max(11px, min(1.1cqw, 2cqh));
+    font-weight: 500;
+  }
+
+  .works__name svg { flex: none; width: max(10px, 1cqw); height: auto; transition: transform .4s cubic-bezier(.22, 1, .36, 1); }
+  .works__card:hover .works__name svg { transform: translate(.15cqw, -.15cqw); }
+
+  .works__all {
+    align-self: flex-start;
+    padding: .75cqw 1.4cqw;
+    border: 1px solid rgb(var(--ink-rgb) / .35);
+    border-radius: 99px;
+    background: transparent;
+    font-family: Inter, Arial, sans-serif;
+    font-size: max(10px, min(.85cqw, 1.6cqh));
+    font-weight: 500;
+    color: rgb(var(--ink-rgb) / 1);
+    cursor: pointer;
+    transition: background-color .3s ease, color .3s ease;
+  }
+
+  .works__all:hover, .works__all:focus-visible { background: rgb(var(--ink-rgb) / 1); color: #f4faff; outline: none; }
+
+  /* "See all projects" sections: six screenshots in a 3 x 2 grid, the NDA note closes the last one */
+  .more__grid {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 3cqh 2cqw;
+    margin-top: 5cqh;
+  }
+
+  .more__grid .works__shot { flex: 1; aspect-ratio: auto; min-height: 0; }
+
+  .more__nda {
+    position: relative;
+    z-index: 2;
+    margin: 3cqh 0 0;
+    font-family: 'DM Sans', Inter, sans-serif;
+    font-size: max(12px, min(1.6cqw, 3cqh));
+    font-weight: 500;
+    color: rgb(var(--ink-rgb) / 1);
+  }
+
+  @container (max-width: 700px) {
+    .skills__grid { position: static; width: auto; height: auto; grid-template-rows: none; gap: 2cqw; }
+    .skills__card { justify-content: flex-start; padding: 3.5cqw; border-radius: 3cqw; gap: 10px; }
+    .skills__heading { font-size: 12px; }
+    .skills__list { gap: .3cqh; }
+    .skills__list li { font-size: 9px; gap: 3px; }
+    .works { position: static; width: auto; justify-content: flex-start; gap: 1.2cqh; }
+    .works__grid { gap: 1.2cqh 2cqw; }
+    .works__card { gap: .6cqh; }
+    .works__shot { border-radius: 2cqw; }
+    .works__all { padding: 6px 12px; }
+    .more__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); margin-top: 3cqh; }
   }
 
   .contact__top {
@@ -1425,7 +1740,7 @@ const groupSlots = [-1, 0, 1, 2];
 
   .case__stage { position: relative; aspect-ratio: 1.35; overflow: hidden; cursor: pointer; background: rgba(255, 255, 255, .4); border-radius: 2cqw; }
 
-  .case__stage > img { user-select: none; -webkit-user-drag: none; position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; will-change: transform, opacity; }
+  .case__stage > img { user-select: none; -webkit-user-drag: none; position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
 
   .case__arrow {
     position: absolute;
@@ -1768,24 +2083,50 @@ const groupSlots = [-1, 0, 1, 2];
 
   .detail__visual img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
+  .detail__close-icon { display: none; width: 16px; height: 16px; }
+
   @container (max-width: 700px) {
     .detail__body { width: auto; }
     .detail__visual { display: none; }
     .detail__row { grid-template-columns: 1fr; row-gap: 1cqh; }
-    .detail__flow { display: flex; flex-direction: column; gap: 2cqh; }
+    .detail__flow { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; gap: 8px; margin-top: 2.5cqh; }
+    .detail__flow > .detail__node { grid-column: auto !important; grid-row: auto !important; }
+    .detail__title-rest { display: none; }
     .detail__link { display: none; }
+    /* readable sizes on phones: the desktop sizes scale with the screen and get far too small here */
+    .detail__close { display: inline-flex; align-items: center; justify-content: center; width: 40px; min-width: 0; height: 40px; padding: 0; border-radius: 50%; }
+    .detail__close-text { display: none; }
+    .detail__close-icon { display: block; }
+    .detail__lead { font-size: 19px; }
+    .detail__metrics dt { font-size: 17px; }
+    .detail__metrics dd { margin-top: 3px; font-size: 10px; letter-spacing: .06em; }
+    .detail__metrics div { padding: 10px 0; }
+    .detail__metrics div:nth-child(even) { padding-left: 12px; }
+    .detail__node { min-height: 0; padding: 10px; border-radius: 10px; gap: 5px; }
+    .detail__node h3 { font-size: 14px; }
+    .detail__node ul { gap: 3px; margin-top: 4px; }
+    .detail__node li { font-size: 11px; }
+    .detail__badge { gap: 4px; padding: 2px 8px; font-size: 9px; }
+    .detail__badge svg { width: 10px; }
+    .detail__row h3 { font-size: 15px; }
+    .detail__row p { font-size: 13px; }
+    .detail__chips { gap: 6px; }
+    .detail__chips li { padding: 4px 8px; font-size: 10px; border-radius: 5px; }
   }
 
   @container (max-width: 700px) {
-    .case__title { top: 4cqh; left: 6cqw; width: 88cqw; max-width: none; font-size: 8cqw; }
+    .case__title { top: 4cqh; left: 6cqw; width: 88cqw; max-width: none; font-size: 6.4cqw; }
+    .case__title-rest { display: none; }
     .case__gallery { top: 17cqh; bottom: 3cqh; left: 6cqw; right: 6cqw; grid-template-columns: 1fr; grid-template-rows: 36fr 52fr; row-gap: 2cqh; }
     .case__thumbs { display: none; }
     .case__stage { height: 100%; aspect-ratio: auto; }
     .case__arrow { width: 9cqw; height: 9cqw; }
-    .case__card { padding: 3cqw; border-radius: 4cqw; gap: 1.5cqw; }
+    .case__card { padding: 4cqw; border-radius: 4cqw; gap: 4cqw; }
     .case__name, .case__label { font-size: 13px; }
-    .case__text { font-size: 10.5px; }
-    .case__tags li { font-size: 10px; }
+    .case__text { font-size: 11px; }
+    .case__card .case__tags { gap: 6px; margin-top: 12px; }
+    .case__tags li { padding: 4px 8px; font-size: 9px; border-radius: 5px; }
+    .case__actions { gap: 8px; margin-top: 16px; }
     .case__button { padding: 10px 16px; font-size: 12px; border-radius: 16px; }
   }
 
