@@ -5,9 +5,9 @@ import '../styles/global.css';
 
 const site = Astro.site ?? new URL('https://yevhen-chumak.vercel.app');
 const canonical = new URL('/', site).href;
-const title = 'Yevhen Chumak — Webflow & Frontend Developer';
+const title = 'Yevhen Chumak — Frontend Developer';
 const description =
-  'Webflow and frontend developer with 4 years of commercial experience and 50+ projects: large corporate websites, CMS architecture, Astro, Next.js, React, GSAP animations, API integrations and performance optimization.';
+  'Frontend developer with 4 years of commercial experience and 50+ projects: large corporate websites with Astro, Next.js, React, TypeScript and Webflow, CMS architecture, GSAP animations, API integrations and performance optimization.';
 // The OG image is added later: drop it into public/og-image.png (1200 x 630) and the tags appear on the next build.
 const ogImage = existsSync('public/og-image.png') ? new URL('/og-image.png', site).href : null;
 
@@ -16,8 +16,8 @@ const person = {
   '@type': 'Person',
   name: 'Yevhen Chumak',
   url: canonical,
-  jobTitle: 'Webflow & Frontend Developer',
-  knowsAbout: ['Webflow', 'Astro', 'Next.js', 'React', 'JavaScript', 'GSAP', 'CMS Architecture', 'Technical SEO', 'Performance Optimization'],
+  jobTitle: 'Frontend Developer',
+  knowsAbout: ['JavaScript', 'TypeScript', 'React', 'Next.js', 'Astro', 'Webflow', 'GSAP', 'CMS Architecture', 'Technical SEO', 'Performance Optimization'],
   sameAs: ['https://www.linkedin.com/in/yevhen-chumak-605516274/'],
 };
 ---
